@@ -126,7 +126,15 @@ class Join(_GetView):
 
 
 class IsMeetingRunning(_GetView):
-    pass
+    required_parameters = ["meetingID"]
+
+    def process(self, parameters: dict):
+        meeting_id = parameters["meetingID"]
+
+        if Meeting.objects.filter(meeting_id=meeting_id).exists():
+            return self.respond(data={"running": "true"})
+        else:
+            return self.respond(data={"running": "false"})
 
 
 class End(_GetView):
