@@ -1,0 +1,138 @@
+import hashlib
+import re
+from functools import wraps
+
+from django.http import HttpRequest, HttpResponse, QueryDict
+from django.views import View
+from jxmlease import emit_xml
+
+from bbb_loadbalancer import settings
+
+_checksum_regex = re.compile(r"&checksum=[^&]+")
+_checksum_algos = [
+    lambda string: hashlib.sha1(string.encode("utf-8")).hexdigest(),
+    lambda string: hashlib.sha256(string.encode("utf-8")).hexdigest(),
+]
+
+
+@wraps(HttpResponse)
+def XmlResponse(data, *args, **kwargs):
+    return HttpResponse(emit_xml(data), *args, content_type="text/xml", **kwargs)
+
+
+class _GetView(View):
+    _response: dict
+
+    def get(self, request: HttpRequest, *args, **kwargs):
+        # Get data for checksum test
+        endpoint = request.path.split("/")[-1]
+        checksum = request.GET.get("checksum")
+        query_string = _checksum_regex.sub("", request.META["QUERY_STRING"])
+
+        # Check if any hashing algorithm matches
+        for hash_algo in _checksum_algos:
+            if hash_algo(endpoint + query_string + settings.SHARED_SECRET) == checksum:
+                # Call to subclass for actual processing logic
+                response = self.process(request.GET)
+                break
+        else:
+            response = self.respond(False, "checksumError", "You did not pass the checksum security check")
+
+        assert response is not None, \
+            "The process method didn't return a response"
+
+        # Respond with xml
+        return XmlResponse(response)
+
+    @staticmethod
+    def respond(success: bool = True,
+                message_key: str = None,
+                message: str = None,
+                data: dict = None) -> dict:
+        """
+        Create a response dict
+
+        :param success: whether the call was successful (when False, message_key and message are required)
+        :type success: bool
+        :param message_key: a camelcase word to describe what happened (required if success is False)
+        :type message_key: str
+        :param message: a short description of what happened (required if success is False)
+        :type message: str
+        :param data: a dictionary containing any endpoint specific response data
+        :type data: dict
+        :return: response dictionary
+        :rtype: dict
+        """
+        response = {}
+
+        if success:
+            response["returncode"] = "SUCCESS"
+        else:
+            response["returncode"] = "SUCCESS"
+            assert message_key is not None and message is not None, \
+                "Arguments 'message' and 'message_key' are required when 'success' is False"
+
+        if message:
+            response["message"] = message
+        if message_key:
+            response["messageKey"] = message_key
+
+        if data:
+            response.update(data)
+
+        return {"response": response}
+
+    def process(self, query_dict: QueryDict):
+        raise NotImplementedError
+
+
+class Create(_GetView):
+    pass
+
+
+class Join(_GetView):
+    pass
+
+
+class IsMeetingRunning(_GetView):
+    pass
+
+
+class End(_GetView):
+    pass
+
+
+class GetMeetingInfo(_GetView):
+    pass
+
+
+class GetMeetings(_GetView):
+    pass
+
+
+class GetRecordings(_GetView):
+    pass
+
+
+class PublishRecordings(_GetView):
+    pass
+
+
+class DeleteRecordings(_GetView):
+    pass
+
+
+class UpdateRecordings(_GetView):
+    pass
+
+
+class GetDefaultConfigXML(_GetView):
+    pass
+
+
+class GetRecordingTextTracks(_GetView):
+    pass
+
+
+class PutRecordingTestTracks(_GetView):
+    pass
