@@ -22,6 +22,7 @@ def XmlResponse(data, *args, **kwargs):
 
 class _GetView(View):
     _response: dict
+    required_parameters: list = []
 
     def get(self, request: HttpRequest, *args, **kwargs):
         # Get data for checksum test
@@ -32,20 +33,27 @@ class _GetView(View):
         # Try different hashing algorithms
         for hash_algo in _checksum_algos:
             if hash_algo(endpoint + query_string + settings.SHARED_SECRET) == checksum:
-
-                # Call to subclass for actual processing logic
-                response = self.process(request.GET)
-
-                assert response is not None, \
-                    "The process method didn't return a response"
-
-                if isinstance(response, dict):
-                    return XmlResponse(response)
-                else:
-                    return response
-
+                break
         # No checksum matched
-        return XmlResponse(self.respond(False, "checksumError", "You did not pass the checksum security check"))
+        else:
+            return XmlResponse(self.respond(False, "checksumError", "You did not pass the checksum security check"))
+
+        # Get parameters as simple dict without checksum
+        parameters = dict((key, request.GET.get(key)) for key in request.GET if key != "checksum")
+        missing_parameters = [param for param in self.required_parameters if param not in parameters]
+        if len(missing_parameters) > 0:
+            return self.respond(False, "", "")  # TODO: error message
+
+        # Call to subclass for actual processing logic
+        response = self.process(parameters)
+        assert response is not None, \
+            "The process method didn't return a response"
+
+        # Wrap response with XmlResponse if necessary
+        if isinstance(response, dict):
+            return XmlResponse(response)
+        else:
+            return response
 
     @staticmethod
     def respond(success: bool = True,
@@ -71,7 +79,7 @@ class _GetView(View):
         if success:
             response["returncode"] = "SUCCESS"
         else:
-            response["returncode"] = "SUCCESS"
+            response["returncode"] = "FAILED"
             assert message_key is not None and message is not None, \
                 "Arguments 'message' and 'message_key' are required when 'success' is False"
 
@@ -85,7 +93,7 @@ class _GetView(View):
 
         return {"response": response}
 
-    def process(self, query_dict: QueryDict):
+    def process(self, parameters: dict):
         raise NotImplementedError
 
 
