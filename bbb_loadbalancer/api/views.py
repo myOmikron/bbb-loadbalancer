@@ -2,11 +2,12 @@ import hashlib
 import re
 from functools import wraps
 
-from django.http import HttpRequest, HttpResponse, QueryDict
+from django.http import HttpRequest, HttpResponse, QueryDict, HttpResponseRedirect
 from django.views import View
 from jxmlease import emit_xml
 
 from bbb_loadbalancer import settings
+from children.models import Meeting
 
 _checksum_regex = re.compile(r"&checksum=[^&]+")
 _checksum_algos = [
@@ -102,7 +103,26 @@ class Create(_GetView):
 
 
 class Join(_GetView):
-    pass
+    required_parameters = ["fullName", "meetingID", "password"]
+
+    def process(self, parameters: dict):
+        full_name = parameters["fullName"]
+        meeting_id = parameters["meetingID"]
+        password = parameters["password"]
+
+        try:
+            meeting = Meeting.objects.get(meeting_id=meeting_id)
+        except Meeting.DoesNotExist:
+            return self.respond(
+                False, "notFound",
+                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
+            )
+
+        return HttpResponseRedirect(
+            meeting.server.api.get_join_meeting_url(
+                full_name, meeting_id, password, dict(parameters)
+            )
+        )
 
 
 class IsMeetingRunning(_GetView):
