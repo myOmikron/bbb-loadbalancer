@@ -29,20 +29,23 @@ class _GetView(View):
         checksum = request.GET.get("checksum")
         query_string = _checksum_regex.sub("", request.META["QUERY_STRING"])
 
-        # Check if any hashing algorithm matches
+        # Try different hashing algorithms
         for hash_algo in _checksum_algos:
             if hash_algo(endpoint + query_string + settings.SHARED_SECRET) == checksum:
+
                 # Call to subclass for actual processing logic
                 response = self.process(request.GET)
-                break
-        else:
-            response = self.respond(False, "checksumError", "You did not pass the checksum security check")
 
-        assert response is not None, \
-            "The process method didn't return a response"
+                assert response is not None, \
+                    "The process method didn't return a response"
 
-        # Respond with xml
-        return XmlResponse(response)
+                if isinstance(response, dict):
+                    return XmlResponse(response)
+                else:
+                    return response
+
+        # No checksum matched
+        return XmlResponse(self.respond(False, "checksumError", "You did not pass the checksum security check"))
 
     @staticmethod
     def respond(success: bool = True,
