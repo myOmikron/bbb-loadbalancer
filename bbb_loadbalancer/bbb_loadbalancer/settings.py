@@ -19,7 +19,7 @@ import common_files.config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-config = common_files.config.LoadBalancerConfig.from_json("config.json")
+config = common_files.config.LoadBalancerConfig.from_json("../config.json")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -42,9 +42,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'api.apps.ApiConfig',
-    'children.apps.ChildrenConfig',
-    'common_files.apps.CommonFilesConfig',
+    'api',
+    'children',
+    'common_files',
 ]
 
 MIDDLEWARE = [
