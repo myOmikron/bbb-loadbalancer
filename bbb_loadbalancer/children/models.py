@@ -5,17 +5,12 @@ from urllib.request import urlopen
 
 from django.db import models
 from django.utils.functional import cached_property
-from bigbluebutton_api_python import BigBlueButton
 from jxmlease import parse
 
 
 class BBBServer(models.Model):
     url = models.CharField(max_length=255, default="")
     secret = models.CharField(max_length=255, default="")
-
-    @cached_property
-    def api(self):
-        return BigBlueButton(self.url, self.secret)
 
     @cached_property
     def api_url(self):
@@ -43,15 +38,13 @@ class BBBServer(models.Model):
         if params is None:
             params = {}
 
-        # Basically urlencode but map True and False to lower case
-        param_strings = []
+        # BBB wants boolean as lower case but urlencode would produce first letter uppercase
         for key, value in params.items():
             if isinstance(value, bool):
-                value = "true" if value else "false"
-            else:
-                value = str(value)
-            param_strings.append(key + "=" + value)
-        param_string = "&".join(param_strings)
+                params[key] = str(value).lower()
+
+        # Build query string
+        param_string = urlencode(params)
 
         # Generate checksum
         secret_str = api_call + param_string + self.secret
