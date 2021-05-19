@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from children.models import *
+from common_files.models import *
 
 
 def clickable_url(obj):
@@ -11,11 +11,11 @@ def clickable_url(obj):
 clickable_url.__name__ = "url"
 
 
-@admin.register(BBBServerDjango)
+@admin.register(BBBServer)
 class BBBServerAdmin(admin.ModelAdmin):
     list_display = ("__str__", clickable_url)
 
 
-@admin.register(MeetingDjango)
+@admin.register(Meeting)
 class MeetingAdmin(admin.ModelAdmin):
     pass

@@ -9,7 +9,7 @@ from django.views import View
 from jxmlease import emit_xml, XMLDictNode
 
 from bbb_loadbalancer import settings
-from children.models import Meeting, BBBServer
+from common_files.models import Meeting, BBBServer
 
 _checksum_regex = re.compile(r"&?checksum=[^&]+")
 _checksum_algos = [
