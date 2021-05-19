@@ -2,6 +2,7 @@ import hashlib
 import logging
 import re
 import os.path
+from collections import defaultdict
 from functools import wraps
 
 import httpx
@@ -247,7 +248,38 @@ class GetRecordings(_GetView):
 
 
 class PublishRecordings(_GetView):
-    pass  # Logic: Required by the bbb server the meeting was on
+    required_parameters = ["recordID", "publish"]
+
+    def process(self, parameters: dict):
+        # Get a list of meetings to be published for each server
+        meetings_per_server = defaultdict(list)
+        for internal_id in map(str.strip, parameters["recordID"].split(",")):
+            try:
+                meeting = Meeting.objects.get(internal_id=internal_id)
+                meetings_per_server[meeting.server].append(internal_id)
+            except Meeting.DoesNotExist:
+                pass
+
+        # Call publish on every server once with all its meetings
+        responses = []
+        for server, meetings in meetings_per_server.items():
+            responses.append(
+                server.send_api_request("publishRecordings", {
+                    "recordID": ",".join(meetings),
+                    "publish": parameters["publish"]
+                })
+            )
+
+        # If any recording was published successfully just call everything a success (bbb behaviour)
+        for response in responses:
+            if response["returncode"] == "SUCCESS":
+                break
+        else:
+            return self.respond(
+                   False, "notFound",
+                   "We could not find recordings"
+               )
+        return self.respond(True, data={"published": parameters["publish"]})
 
 
 class DeleteRecordings(_GetView):
