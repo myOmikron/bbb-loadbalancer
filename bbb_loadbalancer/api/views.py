@@ -6,7 +6,7 @@ from functools import wraps
 from django.db.models import Count
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.views import View
-from jxmlease import emit_xml
+from jxmlease import emit_xml, XMLDictNode
 
 from bbb_loadbalancer import settings
 from children.models import Meeting, BBBServer
@@ -191,7 +191,31 @@ class GetMeetingInfo(_GetView):
 
 
 class GetMeetings(_GetView):
-    pass  # TODO implement own bbb api since bigbluebutton-api-python is to high level
+    required_parameters = []
+
+    def process(self, parameters: dict):
+        meetings = []
+        for server in BBBServer.objects.all():
+            response = server.send_api_request("getMeetings")
+
+            if "messageKey" in response and response["messageKey"] == "noMeetings":
+                continue
+
+            meetings_data = response["meetings"]["meeting"]
+            # There is only one meeting
+            if isinstance(meetings_data, XMLDictNode):
+                meetings.append(meetings_data)
+            else:
+                for meeting in meetings_data:
+                    meetings.append(meeting)
+
+        if len(meetings) == 0:
+            return self.respond(
+                True, "noMeetings",
+                "no meetings were found on this server"
+            )
+        else:
+            return self.respond(True, data={"meetings": {"meeting": meetings}})
 
 
 class GetRecordings(_GetView):
