@@ -3,14 +3,14 @@ import logging
 import re
 from functools import wraps
 
-from django.http import HttpRequest, HttpResponse, QueryDict, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.views import View
 from jxmlease import emit_xml
 
 from bbb_loadbalancer import settings
-from children.models import Meeting
+from children.models import Meeting, BBBServer
 
-_checksum_regex = re.compile(r"&checksum=[^&]+")
+_checksum_regex = re.compile(r"&?checksum=[^&]+")
 _checksum_algos = [
     lambda string: hashlib.sha1(string.encode("utf-8")).hexdigest(),
     lambda string: hashlib.sha256(string.encode("utf-8")).hexdigest(),
@@ -109,9 +109,7 @@ class Join(_GetView):
     required_parameters = ["fullName", "meetingID", "password"]
 
     def process(self, parameters: dict):
-        full_name = parameters["fullName"]
         meeting_id = parameters["meetingID"]
-        password = parameters["password"]
 
         try:
             meeting = Meeting.objects.get(meeting_id=meeting_id)
@@ -122,9 +120,7 @@ class Join(_GetView):
             )
 
         return HttpResponseRedirect(
-            meeting.server.api.get_join_meeting_url(
-                full_name, meeting_id, password, dict(parameters)
-            )
+            meeting.server.build_api_url("join", parameters)
         )
 
 
@@ -144,7 +140,6 @@ class End(_GetView):
     required_parameters = ["password", "meetingID"]
 
     def process(self, parameters: dict):
-        password = parameters["password"]
         meeting_id = parameters["meetingID"]
 
         try:
@@ -155,13 +150,11 @@ class End(_GetView):
                 "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
             )
 
-        response = meeting.server.api.end_meeting(meeting_id, password)
-        if response.get_return_code() == "SUCCESS":
-            pass
-        else:
-            logger.debug(f"Couldn't end '{meeting_id}' on '{meeting.server}': {response.get_message()}")
+        response = meeting.server.send_api_request("end", parameters)
+        if response["returncode"] == "SUCCESS":
+            meeting.delete()
 
-        return XmlResponse(response.rawXml)
+        return XmlResponse({"response": response})
 
 
 class GetMeetingInfo(_GetView):
@@ -178,12 +171,12 @@ class GetMeetingInfo(_GetView):
                 "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
             )
 
-        response = meeting.server.api.get_meeting_info(meeting_id)
-        return XmlResponse(response.rawXml)
+        response = meeting.server.send_api_request("getMeetingInfo", parameters)
+        return XmlResponse({"response": response})
 
 
 class GetMeetings(_GetView):
-    pass
+    pass  # TODO implement own bbb api since bigbluebutton-api-python is to high level
 
 
 class GetRecordings(_GetView):
