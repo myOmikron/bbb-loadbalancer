@@ -109,12 +109,14 @@ class Create(_GetView):
     required_parameters = ["meetingID"]
 
     def process(self, parameters: dict):
+        meeting_id = parameters["meetingID"]
+
         # Primitive loadbalancing code
         server = BBBServer.objects.annotate(meetings=Count("meeting")).earliest("meetings")  # TODO pick at random
 
         # Create meeting
         response = server.send_api_request("create", parameters)
-        if response["returncode"] == "SUCCESS":
+        if response["returncode"] == "SUCCESS" and not Meeting.running.filter(meeting_id=meeting_id).exists():
             Meeting.objects.create(
                 meeting_id=response["meetingID"],
                 internal_id=response["internalMeetingID"],
@@ -171,6 +173,7 @@ class End(_GetView):
         response = meeting.server.send_api_request("end", parameters)
         if response["returncode"] == "SUCCESS":
             meeting.ended = True
+            meeting.save()
 
         return self.respond(data=response)
 
