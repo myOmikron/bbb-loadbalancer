@@ -1,2 +1,10 @@
-Django==3.2.3
+# bbb_loadbalancer
 jxmlease==1.0.3
+
+# Poller
+httpx~=0.18.1
+PyMySQL~=1.0.2
+
+# Common
+Django==3.2.3
+staticconfig~=0.0.6

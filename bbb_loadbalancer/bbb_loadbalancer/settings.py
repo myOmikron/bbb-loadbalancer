@@ -13,8 +13,13 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+import staticconfig
+
+import common_files.config
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+config = common_files.config.LoadBalancerConfig.from_json("config.json")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -25,9 +30,7 @@ SECRET_KEY = 'change_me'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-]
+ALLOWED_HOSTS = config.django.allowed_hosts
 
 
 # Application definition
@@ -39,8 +42,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'api',
-    'children',
+    'api.apps.ApiConfig',
+    'children.apps.ChildrenConfig',
+    'common_files.apps.CommonFilesConfig',
 ]
 
 MIDDLEWARE = [
@@ -79,8 +83,12 @@ WSGI_APPLICATION = 'bbb_loadbalancer.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': config.database.engine,
+        'NAME': config.database.name,
+        'HOST': config.database.host,
+        'PORT': config.database.port,
+        'USER': config.database.user,
+        'PASSWORD': config.database.password
     }
 }
 
@@ -128,4 +136,4 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SHARED_SECRET = "change_me"
+SHARED_SECRET = config.secret

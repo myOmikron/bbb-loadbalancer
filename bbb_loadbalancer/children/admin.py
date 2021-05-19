@@ -11,11 +11,11 @@ def clickable_url(obj):
 clickable_url.__name__ = "url"
 
 
-@admin.register(BBBServer)
+@admin.register(BBBServerDjango)
 class BBBServerAdmin(admin.ModelAdmin):
     list_display = ("__str__", clickable_url)
 
 
-@admin.register(Meeting)
+@admin.register(MeetingDjango)
 class MeetingAdmin(admin.ModelAdmin):
     pass

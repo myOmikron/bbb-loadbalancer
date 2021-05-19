@@ -3,14 +3,15 @@ from hashlib import sha1
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
-from django.db import models
 from django.utils.functional import cached_property
 from jxmlease import parse
 
+from common_files.models import *
 
-class BBBServer(models.Model):
-    url = models.CharField(max_length=255, default="")
-    secret = models.CharField(max_length=255, default="")
+
+class BBBServerDjango(BBBServer):
+    def __init__(self):
+        super().__init__()
 
     @cached_property
     def api_url(self):
@@ -69,10 +70,9 @@ class BBBServer(models.Model):
             raise RuntimeError("XMLSyntaxError", e.message)
 
 
-class Meeting(models.Model):
-    meeting_id = models.CharField(max_length=255, default="")
-    internal_id = models.CharField(max_length=255, default="")
-    server = models.ForeignKey(BBBServer, on_delete=models.CASCADE)
+class MeetingDjango(Meeting):
+    def __init__(self):
+        super().__init__()
 
     def __str__(self):
         return self.meeting_id
