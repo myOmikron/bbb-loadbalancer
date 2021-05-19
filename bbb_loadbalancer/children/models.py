@@ -1,11 +1,12 @@
-from django.db import models
 from django.utils.functional import cached_property
 from bigbluebutton_api_python import BigBlueButton
 
+from common_files.models import *
 
-class BBBServer(models.Model):
-    url = models.CharField(max_length=255, default="")
-    secret = models.CharField(max_length=255, default="")
+
+class BBBServerDjango(BBBServer):
+    def __init__(self):
+        super().__init__()
 
     @cached_property
     def api(self):
@@ -18,10 +19,9 @@ class BBBServer(models.Model):
         return self.url
 
 
-class Meeting(models.Model):
-    meeting_id = models.CharField(max_length=255, default="")
-    internal_id = models.CharField(max_length=255, default="")
-    server = models.ForeignKey(BBBServer, on_delete=models.CASCADE)
+class MeetingDjango(Meeting):
+    def __init__(self):
+        super().__init__()
 
     def __str__(self):
         return self.meeting_id
