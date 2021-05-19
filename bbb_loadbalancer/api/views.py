@@ -130,7 +130,7 @@ class Join(_GetView):
         meeting_id = parameters["meetingID"]
 
         try:
-            meeting = Meeting.objects.get(meeting_id=meeting_id)
+            meeting = Meeting.running.get(meeting_id=meeting_id)
         except Meeting.DoesNotExist:
             return self.respond(
                 False, "notFound",
@@ -148,7 +148,7 @@ class IsMeetingRunning(_GetView):
     def process(self, parameters: dict):
         meeting_id = parameters["meetingID"]
 
-        if Meeting.objects.filter(meeting_id=meeting_id).exists():
+        if Meeting.running.filter(meeting_id=meeting_id).exists():
             return self.respond(data={"running": "true"})
         else:
             return self.respond(data={"running": "false"})
@@ -161,7 +161,7 @@ class End(_GetView):
         meeting_id = parameters["meetingID"]
 
         try:
-            meeting = Meeting.objects.get(meeting_id=meeting_id)
+            meeting = Meeting.running.get(meeting_id=meeting_id)
         except Meeting.DoesNotExist:
             return self.respond(
                 False, "notFound",
@@ -170,7 +170,7 @@ class End(_GetView):
 
         response = meeting.server.send_api_request("end", parameters)
         if response["returncode"] == "SUCCESS":
-            meeting.delete()
+            meeting.ended = True
 
         return self.respond(data=response)
 
@@ -182,7 +182,7 @@ class GetMeetingInfo(_GetView):
         meeting_id = parameters["meetingID"]
 
         try:
-            meeting = Meeting.objects.get(meeting_id=meeting_id)
+            meeting = Meeting.running.get(meeting_id=meeting_id)
         except Meeting.DoesNotExist:
             return self.respond(
                 False, "notFound",

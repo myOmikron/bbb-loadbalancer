@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 from urllib.request import urlopen
 
 from django.db import models
+from django.db.models import Manager
 from jxmlease import parse
 
 
@@ -70,12 +71,22 @@ class BBBServer(models.Model):
             raise RuntimeError("XMLSyntaxError", e.message)
 
 
+class RunningMeetingsManager(Manager):
+
+    def get_queryset(self):
+        return super().get_queryset().filter(ended=False)
+
+
 class Meeting(models.Model):
     app_label = "common"
+
+    objects = Manager()
+    running = RunningMeetingsManager()
 
     meeting_id = models.CharField(max_length=255, default="")
     internal_id = models.CharField(max_length=255, default="")
     server = models.ForeignKey(BBBServer, on_delete=models.CASCADE)
+    ended = models.BooleanField(default=False)
 
     def __str__(self):
         return self.meeting_id
