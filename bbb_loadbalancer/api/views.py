@@ -230,10 +230,11 @@ class GetRecordings(_GetView):
     def process(self, parameters: dict):
         recordings = []
         if "recordID" in parameters:
-            recordings = parameters["recordID"].split(",")
+            recordings = list(map(str.strip, parameters["recordID"].split(",")))
         elif "meetingID" in parameters:
-            for meeting_id in parameters["meetingID"].split(","):
-                recordings.append(Meeting.objects.get(meeting_id=meeting_id).internal_id)
+            for meeting_id in map(str.strip, parameters["meetingID"].split(",")):
+                for meeting in Meeting.objects.filter(meeting_id=meeting_id):
+                    recordings.append(meeting.internal_id)
 
         url = os.path.join(settings.config.player.api_url, "getRecordings")
         params = {
