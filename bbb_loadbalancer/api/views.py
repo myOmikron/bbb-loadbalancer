@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import re
 from functools import wraps
 
@@ -14,6 +15,8 @@ _checksum_algos = [
     lambda string: hashlib.sha1(string.encode("utf-8")).hexdigest(),
     lambda string: hashlib.sha256(string.encode("utf-8")).hexdigest(),
 ]
+
+logger = logging.getLogger(__name__)
 
 
 @wraps(HttpResponse)
@@ -138,11 +141,45 @@ class IsMeetingRunning(_GetView):
 
 
 class End(_GetView):
-    pass
+    required_parameters = ["password", "meetingID"]
+
+    def process(self, parameters: dict):
+        password = parameters["password"]
+        meeting_id = parameters["meetingID"]
+
+        try:
+            meeting = Meeting.objects.get(meeting_id=meeting_id)
+        except Meeting.DoesNotExist:
+            return self.respond(
+                False, "notFound",
+                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
+            )
+
+        response = meeting.server.api.end_meeting(meeting_id, password)
+        if response.get_return_code() == "SUCCESS":
+            pass
+        else:
+            logger.debug(f"Couldn't end '{meeting_id}' on '{meeting.server}': {response.get_message()}")
+
+        return XmlResponse(response.rawXml)
 
 
 class GetMeetingInfo(_GetView):
-    pass
+    required_parameters = ["meetingID"]
+
+    def process(self, parameters: dict):
+        meeting_id = parameters["meetingID"]
+
+        try:
+            meeting = Meeting.objects.get(meeting_id=meeting_id)
+        except Meeting.DoesNotExist:
+            return self.respond(
+                False, "notFound",
+                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
+            )
+
+        response = meeting.server.api.get_meeting_info(meeting_id)
+        return XmlResponse(response.rawXml)
 
 
 class GetMeetings(_GetView):
