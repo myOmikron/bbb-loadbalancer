@@ -283,7 +283,20 @@ class PublishRecordings(_GetView):
 
 
 class DeleteRecordings(_GetView):
-    pass  # Logic: Required by the player, wouldn't hurt on bbb server as well
+    required_parameters = ["recordID"]
+
+    def process(self, parameters: dict):
+        url = os.path.join(settings.config.player.api_url, "deleteRecordings")
+        params = {
+            "recordings": [record_id.strip() for record_id in parameters["recordID"].split(",")]
+        }
+        params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, "deleteRecordings")
+
+        response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"}).json()
+        if response["success"]:
+            return self.respond(True)
+        else:
+            return self.respond(False, "emptyList", response["message"])
 
 
 class UpdateRecordings(_GetView):
