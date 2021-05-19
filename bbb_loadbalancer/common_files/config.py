@@ -17,3 +17,7 @@ class LoadBalancerConfig(staticconfig.Config):
             "127.0.0.1"
         ]
         self.secret = "change_me"
+
+        self.player = staticconfig.Namespace()
+        self.player.api_url = "https://change_me/api/v1/"
+        self.player.rcp_secret = "change_me"

@@ -1,5 +1,6 @@
 # bbb_loadbalancer
 jxmlease==1.0.3
+rc-protocol==0.0.4
 
 # Poller
 httpx~=0.18.1

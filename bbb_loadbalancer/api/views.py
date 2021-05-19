@@ -1,12 +1,15 @@
 import hashlib
 import logging
 import re
+import os.path
 from functools import wraps
 
+import httpx
 from django.db.models import Count
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.views import View
 from jxmlease import emit_xml, XMLDictNode
+from rc_protocol import get_checksum
 
 from bbb_loadbalancer import settings
 from common_files.models import Meeting, BBBServer
@@ -107,7 +110,7 @@ class Create(_GetView):
 
     def process(self, parameters: dict):
         # Primitive loadbalancing code
-        server = BBBServer.objects.annotate(meetings=Count("meeting")).earliest("meetings")
+        server = BBBServer.objects.annotate(meetings=Count("meeting")).earliest("meetings")  # TODO pick at random
 
         # Create meeting
         response = server.send_api_request("create", parameters)
@@ -219,15 +222,32 @@ class GetMeetings(_GetView):
 
 
 class GetRecordings(_GetView):
-    pass
+    required_parameters = []
+
+    def process(self, parameters: dict):
+        recordings = []
+        if "recordID" in parameters:
+            recordings = parameters["recordID"].split(",")
+        elif "meetingID" in parameters:
+            for meeting_id in parameters["meetingID"].split(","):
+                recordings.append(Meeting.objects.get(meeting_id=meeting_id).internal_id)
+
+        url = os.path.join(settings.config.player.api_url, "getRecordings")
+        params = {
+            "recordings": recordings
+        }
+        params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, "getRecordings")
+
+        response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"})
+        return self.respond(False, "notImplemented", "this endpoint is not quite implemented yet!")
 
 
 class PublishRecordings(_GetView):
-    pass
+    pass  # Logic: Required by the bbb server the meeting was on
 
 
 class DeleteRecordings(_GetView):
-    pass
+    pass  # Logic: Required by the player, wouldn't hurt on bbb server as well
 
 
 class UpdateRecordings(_GetView):
