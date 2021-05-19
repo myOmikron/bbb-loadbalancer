@@ -300,7 +300,41 @@ class DeleteRecordings(_GetView):
 
 
 class UpdateRecordings(_GetView):
-    pass
+    required_parameters = ["recordID"]
+
+    def process(self, parameters: dict):
+        # Get a parameters dict without the 'recordID'
+        meta_parameters = dict((key, value) for key, value in parameters.items() if key != "recordID")
+
+        # Get a list of meetings to be updated for each server
+        meetings_per_server = defaultdict(list)
+        for internal_id in map(str.strip, parameters["recordID"].split(",")):
+            try:
+                meeting = Meeting.objects.get(internal_id=internal_id)
+                meetings_per_server[meeting.server].append(internal_id)
+            except Meeting.DoesNotExist:
+                pass
+
+        # Call update on every server once with all its meetings
+        responses = []
+        for server, meetings in meetings_per_server.items():
+            responses.append(
+                server.send_api_request("updateRecordings", {
+                    "recordID": ",".join(meetings),
+                    **meta_parameters,
+                })
+            )
+
+        # If any recording was updated successfully just call everything a success (bbb behaviour)
+        for response in responses:
+            if response["returncode"] == "SUCCESS":
+                break
+        else:
+            return self.respond(
+                False, "notFound",
+                "We could not find recordings"
+            )
+        return self.respond(True, data={"updated": "true"})
 
 
 class GetDefaultConfigXML(_GetView):
