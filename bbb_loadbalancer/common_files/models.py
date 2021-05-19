@@ -9,8 +9,6 @@ from jxmlease import parse
 
 
 class BBBServer(models.Model):
-    app_label = "common"
-
     url = models.CharField(max_length=255, default="")
     secret = models.CharField(max_length=255, default="")
 
@@ -78,8 +76,6 @@ class RunningMeetingsManager(Manager):
 
 
 class Meeting(models.Model):
-    app_label = "common"
-
     objects = Manager()
     running = RunningMeetingsManager()
 
