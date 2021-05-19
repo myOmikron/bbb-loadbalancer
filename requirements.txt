@@ -1,3 +1,11 @@
-Django==3.2.3
+# bbb_loadbalancer
 jxmlease==1.0.3
 bigbluebutton-api-python==0.0.11
+
+# Poller
+httpx~=0.18.1
+PyMySQL~=1.0.2
+staticconfig~=0.0.6
+
+# Common
+Django==3.2.3
