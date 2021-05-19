@@ -3,6 +3,7 @@ import logging
 import re
 from functools import wraps
 
+from django.db.models import Count
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.views import View
 from jxmlease import emit_xml
@@ -102,7 +103,21 @@ class _GetView(View):
 
 
 class Create(_GetView):
-    pass
+    required_parameters = ["meetingID"]
+
+    def process(self, parameters: dict):
+        # Primitive loadbalancing code
+        server = BBBServer.objects.annotate(meetings=Count("meeting")).earliest("meetings")
+
+        # Create meeting
+        response = server.send_api_request("create", parameters)
+        if response["returncode"] == "SUCCESS":
+            Meeting.objects.create(
+                meeting_id=response["meetingID"],
+                internal_id=response["internalMeetingID"],
+                server=server
+            )
+        return XmlResponse({"response": response})
 
 
 class Join(_GetView):
