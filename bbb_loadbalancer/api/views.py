@@ -117,7 +117,7 @@ class Create(_GetView):
                 internal_id=response["internalMeetingID"],
                 server=server
             )
-        return XmlResponse({"response": response})
+        return self.respond(data=response)
 
 
 class Join(_GetView):
@@ -169,7 +169,7 @@ class End(_GetView):
         if response["returncode"] == "SUCCESS":
             meeting.delete()
 
-        return XmlResponse({"response": response})
+        return self.respond(data=response)
 
 
 class GetMeetingInfo(_GetView):
