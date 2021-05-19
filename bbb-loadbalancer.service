@@ -1,0 +1,13 @@
+[Unit]
+Description=BBB-Loadbalancer Sync service
+After=bbb-web.service
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+ExecStart=/home/bbb-loadbalancer/bbb-loadbalancer/venv/bin/python3 manage.py runserver 127.0.0.1:8005
+User=bbb-loadbalancer
+WorkingDirectory=/home/bbb-loadbalancer/bbb-loadbalancer/bbb_loadbalancer/
+Restart=always
+KillSignal=SIGKILL
