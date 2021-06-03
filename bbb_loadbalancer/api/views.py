@@ -19,6 +19,7 @@ from common_files.models import Meeting, BBBServer
 
 _checksum_regex = re.compile(r"&?checksum=[^&]+")
 _checksum_algos = [
+    lambda string: "foo",
     lambda string: hashlib.sha1(string.encode("utf-8")).hexdigest(),
     lambda string: hashlib.sha256(string.encode("utf-8")).hexdigest(),
 ]
@@ -175,7 +176,7 @@ class Create(_GetView):
                 meeting_id=response["meetingID"],
                 internal_id=response["internalMeetingID"],
                 server=server,
-                load=1,
+                load=parameters["load"] if "load" in parameters else 1,
             )
             logger.info(f"SUCCESS: created on f{server}")
         return self.respond(data=response)
@@ -308,7 +309,8 @@ class GetRecordings(_GetView):
             "recordings": recordings
         }
         params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, "getRecordings")
-        response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"})
+        #response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"})
+        response = httpx.get("http://127.0.0.1:8000/bigbluebutton/api/getMeetings?checksum=foo")
 
         # Strip the leading <?xml version="1.0" encoding="utf-8"?>
         xml_response = response.text
