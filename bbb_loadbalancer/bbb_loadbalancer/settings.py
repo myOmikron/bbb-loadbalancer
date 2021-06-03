@@ -98,10 +98,14 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'default': {
+        'with_time': {
             'format': '{asctime} {message}',
             'style': '{',
             'datefmt': '%d/%b/%Y %H:%M:%S',
+        },
+        'without_time': {
+            'format': '{message}',
+            'style': '{',
         },
     },
     'filters': {
@@ -112,17 +116,17 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'default'
+            'formatter': 'without_time'
         },
         'loadbalancer': {
             'class': 'logging.FileHandler',
             'filename': os.path.join(config.log_dir, 'loadbalancer.log'),
-            'formatter': 'default'
+            'formatter': 'with_time'
         },
         'django': {
             'class': 'logging.FileHandler',
             'filename': os.path.join(config.log_dir, 'django.log'),
-            'formatter': 'default'
+            'formatter': 'with_time'
         }
     },
     'loggers': {
