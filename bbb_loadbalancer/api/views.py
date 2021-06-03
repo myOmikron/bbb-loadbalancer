@@ -455,7 +455,7 @@ class Move(_GetView):
             return self.missing_meeting_id()
 
         try:
-            meeting = Meeting.objects.get(meeting_id=meeting_id)
+            meeting = Meeting.running.get(meeting_id=meeting_id)
         except Meeting.DoesNotExist:
             return self.respond(
                 False, "notFound",
