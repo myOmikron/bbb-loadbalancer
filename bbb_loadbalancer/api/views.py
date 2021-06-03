@@ -4,12 +4,13 @@ import re
 import os.path
 from collections import defaultdict
 from functools import wraps
+from xml.sax.xmlreader import AttributesImpl
 
 import httpx
 from django.db.models import Count
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.views import View
-from jxmlease import emit_xml, XMLDictNode
+from jxmlease import emit_xml, XMLDictNode, XMLCDATANode
 from rc_protocol import get_checksum
 
 from bbb_loadbalancer import settings
@@ -22,6 +23,25 @@ _checksum_algos = [
 ]
 
 logger = logging.getLogger(__name__)
+
+
+class RawXMLString(XMLCDATANode):
+    """
+    Small hack to wrap xml string with jxmlease without parsing it first
+    """
+
+    def _emit_handler(self, content_handler, depth, pretty, newl, indent):
+        if pretty:
+            content_handler.ignorableWhitespace(depth * indent)
+        content_handler.startElement(self.tag, AttributesImpl(self.xml_attrs))
+        content = self.get_cdata()
+        content_handler._finish_pending_start_element()               # Copied and modified from XMLGenerator.characters
+        if not isinstance(content, str):                              #
+            content_handler = str(content, content_handler._encoding) #
+        content_handler._write(content)                               #
+        content_handler.endElement(self.tag)
+        if pretty and depth > 0:
+            content_handler.ignorableWhitespace(newl)
 
 
 @wraps(HttpResponse)
@@ -237,14 +257,29 @@ class GetRecordings(_GetView):
                 for meeting in Meeting.objects.filter(meeting_id=meeting_id):
                     recordings.append(meeting.internal_id)
 
+        # Forward request to player
         url = os.path.join(settings.config.player.api_url, "getRecordings")
         params = {
             "recordings": recordings
         }
         params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, "getRecordings")
-
         response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"})
-        return self.respond(False, "notImplemented", "this endpoint is not quite implemented yet!")
+
+        # Strip the leading <?xml version="1.0" encoding="utf-8"?>
+        xml_response = response.text
+        xml_response = xml_response[xml_response.find("\n"):]
+
+        # Wrap player's response
+        if xml_response:  # TODO check if no recordings
+            return self.respond(
+                True, "noRecordings", "There are no recordings for the meeting(s).",
+                data={"recordings": {}}
+            )
+        else:
+            return self.respond(
+                True,
+                data={"recordings": RawXMLString(xml_response)}
+            )
 
 
 class PublishRecordings(_GetView):
