@@ -11,6 +11,11 @@ def clickable_url(obj):
 clickable_url.__name__ = "url"
 
 
+@admin.action(description='Mark a meeting as ended')
+def make_ended(modeladmin, request, queryset):
+    queryset.update(ended=True)
+
+
 @admin.register(BBBServer)
 class BBBServerAdmin(admin.ModelAdmin):
     list_display = ("__str__", "server_id", clickable_url)
@@ -21,3 +26,4 @@ class BBBServerAdmin(admin.ModelAdmin):
 class MeetingAdmin(admin.ModelAdmin):
     list_display = ("__str__", "server", "ended")
     ordering = ("ended", )
+    actions = [make_ended]
