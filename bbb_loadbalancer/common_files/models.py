@@ -83,6 +83,7 @@ class Meeting(models.Model):
     internal_id = models.CharField(max_length=255, default="")
     server = models.ForeignKey(BBBServer, on_delete=models.CASCADE)
     ended = models.BooleanField(default=False)
+    load = models.IntegerField()
 
     def __str__(self):
         return self.meeting_id

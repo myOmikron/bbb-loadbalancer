@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import random
 import re
 import os.path
 from collections import defaultdict
@@ -7,7 +8,7 @@ from functools import wraps
 from xml.sax.xmlreader import AttributesImpl
 
 import httpx
-from django.db.models import Count
+from django.db.models import Sum, Q
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.views import View
 from jxmlease import emit_xml, XMLDictNode, XMLCDATANode
@@ -132,8 +133,25 @@ class Create(_GetView):
     def process(self, parameters: dict):
         meeting_id = parameters["meetingID"]
 
-        # Primitive loadbalancing code
-        server = BBBServer.objects.annotate(meetings=Count("meeting")).earliest("meetings")  # TODO pick at random
+        # Get all servers with a calculated load attribute
+        servers = BBBServer.objects\
+            .annotate(load=Sum("meeting__load", filter=Q(meeting__ended=False)))\
+            .order_by("load")\
+            .all()
+
+        # Remove server above smallest load
+        smallest_load = servers[0].load
+        for i in range(len(servers)):
+            server = servers[i]
+            if server.load != smallest_load:
+                break
+        else:
+            i = len(servers)
+        servers = servers[:i]
+        # return self.respond(True, data={"server": [{"url": server.url, "load": server.load} for server in servers]})
+
+        # Choose one at random
+        server = random.choice(servers)
 
         # Create meeting
         response = server.send_api_request("create", parameters)
@@ -141,7 +159,8 @@ class Create(_GetView):
             Meeting.objects.create(
                 meeting_id=response["meetingID"],
                 internal_id=response["internalMeetingID"],
-                server=server
+                server=server,
+                load=1,
             )
         return self.respond(data=response)
 
