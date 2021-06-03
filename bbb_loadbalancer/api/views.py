@@ -336,14 +336,10 @@ class GetRecordings(_GetView):
             "recordings": recordings
         }
         params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, "getRecordings")
-        response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"})
-
-        # Strip the leading <?xml version="1.0" encoding="utf-8"?>
-        xml_response = response.text
-        xml_response = xml_response[xml_response.find("\n"):]
+        response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"}).text
 
         # Wrap player's response
-        if xml_response:  # TODO check if no recordings
+        if not response:
             return self.respond(
                 True, "noRecordings", "There are no recordings for the meeting(s).",
                 data={"recordings": {}}
@@ -351,7 +347,7 @@ class GetRecordings(_GetView):
         else:
             return self.respond(
                 True,
-                data={"recordings": RawXMLString(xml_response)}
+                data={"recordings": RawXMLString(response)}
             )
 
 
