@@ -9,7 +9,6 @@ https://docs.djangoproject.com/en/3.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
-
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -91,6 +90,53 @@ DATABASES = {
     }
 }
 
+# Logging
+# https://docs.djangoproject.com/en/3.2/topics/logging/
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'default': {
+            'format': '{name} {asctime} {message}',
+            'style': '{',
+            'datefmt': '%d/%b/%Y %H:%M:%S',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'default'
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': config.logging.file,
+        },
+        'null': {
+            'class': 'logging.NullHandler',
+        }
+    },
+    'loggers': {
+        'api': {
+            'handlers': ['console', 'file'],
+            'level': config.logging.level,
+            'propagate': True,
+        },
+        'django': {
+            'handlers': ['console'],
+            'filter': ['require_debug_true'],
+            'propagate': True,
+        },
+        'django.server': {
+            'handlers': ['null'],
+        }
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
