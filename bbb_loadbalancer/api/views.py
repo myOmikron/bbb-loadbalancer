@@ -139,6 +139,10 @@ class DefaultView(_GetView):
         return XmlResponse(self.respond(False, "unsupportedRequest", "This request is not supported."))
 
 
+# --------------------------- #
+# Bigbluebutton API endpoints #
+# --------------------------- #
+
 class Create(_GetView):
 
     @staticmethod
@@ -280,21 +284,30 @@ class GetMeetingInfo(_GetView):
 
 class GetMeetings(_GetView):
 
+    @staticmethod
+    def from_server(server: BBBServer) -> list:
+        """
+        Get all meetings on a server
+
+        :param server: server to get meetings from
+        :return: list of meetings (meetings are dicts)
+        """
+        response = server.send_api_request("getMeetings")
+
+        if "messageKey" in response and response["messageKey"] == "noMeetings":
+            return []  # No meetings
+
+        meetings_data = response["meetings"]["meeting"]
+        if isinstance(meetings_data, XMLDictNode):
+            return [meetings_data]  # One meeting
+
+        else:
+            return list(meetings_data)  # Multiple meetings
+
     def process(self, parameters: dict):
         meetings = []
         for server in BBBServer.objects.all():
-            response = server.send_api_request("getMeetings")
-
-            if "messageKey" in response and response["messageKey"] == "noMeetings":
-                continue
-
-            meetings_data = response["meetings"]["meeting"]
-            # There is only one meeting
-            if isinstance(meetings_data, XMLDictNode):
-                meetings.append(meetings_data)
-            else:
-                for meeting in meetings_data:
-                    meetings.append(meeting)
+            meetings += self.from_server(server)
 
         if len(meetings) == 0:
             return self.respond(
@@ -443,7 +456,10 @@ class GetRecordingTextTracks(_GetView):
 class PutRecordingTestTracks(_GetView):
     pass
 
-# Custom API endpoints
+
+# -------------------- #
+# Custom API endpoints #
+# -------------------- #
 
 class Move(_GetView):
 
@@ -499,3 +515,20 @@ class Move(_GetView):
                 create_query=meeting.create_query,
             )
         return self.respond(data=response)
+
+
+class GetStatistics(_GetView):
+
+    meeting_attributes = ["meetingID", "participantCount", "listenerCount", "voiceParticipantCount", "videoCount"]
+
+    def process(self, parameters: dict):
+        servers = []
+        for server in BBBServer.objects.all():
+            meetings = []
+            for meeting in GetMeetings.from_server(server):
+                meetings.append(dict(
+                    (attr, meeting[attr]) for attr in self.meeting_attributes
+                ))
+            servers.append({"serverID": server.server_id, "meetings": {"meeting": meetings}})
+
+        return self.respond(True, data={"servers": {"server": servers}})
