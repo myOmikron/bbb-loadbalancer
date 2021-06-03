@@ -151,7 +151,7 @@ class Create(_GetView):
         Get the next server to create a meeting on.
 
         Get a list of the servers with the smallest load total and return one at random
-        :param queryset: optional queryset to limit the search
+        :param queryset: optional queryset to limit the search (state and load will be handled)
         :return: a server with the smallest load total
         """
         if queryset is None:
@@ -159,6 +159,7 @@ class Create(_GetView):
 
         # Get all servers with a calculated load attribute
         servers = queryset \
+            .filter(state=BBBServer.ENABLED) \
             .annotate(load=Sum("meeting__load", filter=Q(meeting__ended=False))) \
             .order_by("load") \
             .all()
