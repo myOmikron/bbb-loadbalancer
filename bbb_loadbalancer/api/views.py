@@ -173,7 +173,11 @@ class Create(_GetView):
 class Join(_GetView):
 
     def process(self, parameters: dict):
-        meeting_id = parameters["meetingID"]  # TODO error handling
+        # Require meetingID
+        try:
+            meeting_id = parameters["meetingID"]
+        except KeyError:
+            return self.missing_meeting_id()
 
         try:
             meeting = Meeting.running.get(meeting_id=meeting_id)
