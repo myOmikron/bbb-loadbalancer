@@ -84,6 +84,7 @@ class Meeting(models.Model):
     server = models.ForeignKey(BBBServer, on_delete=models.CASCADE)
     ended = models.BooleanField(default=False)
     load = models.IntegerField()
+    create_query = models.JSONField(default=dict)
 
     def __str__(self):
         return self.meeting_id

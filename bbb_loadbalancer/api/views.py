@@ -189,6 +189,7 @@ class Create(_GetView):
                 internal_id=response["internalMeetingID"],
                 server=server,
                 load=parameters["load"] if "load" in parameters else 1,
+                create_query=parameters,
             )
             logger.info(f"SUCCESS: created on f{server}")
         return self.respond(data=response)
@@ -476,7 +477,9 @@ class Move(_GetView):
             return self.respond(False, "sameServer", "Origin and destination server are the same.")
 
         # End meeting
-        response = meeting.server.send_api_request("end", {"meetingID": meeting_id, "password": ""})
+        response = meeting.server.send_api_request(
+            "end", {"meetingID": meeting_id, "password": meeting.create_query["moderatorPW"]}
+        )
         if response["returncode"] == "SUCCESS":
             meeting.ended = True
             meeting.save()
@@ -484,12 +487,15 @@ class Move(_GetView):
             return self.respond(data=response)
 
         # Create meeting
-        response = server.send_api_request("create", {})  # TODO save original params
+        response = server.send_api_request(
+            "create", meeting.create_query
+        )
         if response["returncode"] == "SUCCESS" and not Meeting.running.filter(meeting_id=meeting_id).exists():
             Meeting.objects.create(
                 meeting_id=response["meetingID"],
                 internal_id=response["internalMeetingID"],
                 server=server,
-                load=parameters["load"] if "load" in parameters else 1,
+                load=meeting.load,
+                create_query=meeting.create_query,
             )
         return self.respond(data=response)
