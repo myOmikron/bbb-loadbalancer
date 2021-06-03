@@ -62,6 +62,6 @@ class Command(BaseCommand):
                         load=meeting.load,
                         create_query=meeting.create_query,
                     )
-                    print(f"Reopened '{meeting.meeting_id}' on #{new_server.server_id}", sys.stdout)
+                    print(f"Reopened '{meeting.meeting_id}' on #{new_server.server_id}", file=sys.stdout)
                 else:
-                    print(f"Couldn't reopen '{meeting.meeting_id}': {response['message']}", sys.stderr)
+                    print(f"Couldn't reopen '{meeting.meeting_id}': {response['message']}", file=sys.stderr)
