@@ -19,7 +19,6 @@ from common_files.models import Meeting, BBBServer
 
 _checksum_regex = re.compile(r"&?checksum=[^&]+")
 _checksum_algos = [
-    lambda string: "foo",
     lambda string: hashlib.sha1(string.encode("utf-8")).hexdigest(),
     lambda string: hashlib.sha256(string.encode("utf-8")).hexdigest(),
 ]
@@ -142,17 +141,22 @@ class DefaultView(_GetView):
 
 class Create(_GetView):
 
-    def process(self, parameters: dict):
-        # Require meetingID
-        try:
-            meeting_id = parameters["meetingID"]
-        except KeyError:
-            return self.missing_meeting_id()
+    @staticmethod
+    def get_next_server(queryset=None) -> BBBServer:
+        """
+        Get the next server to create a meeting on.
+
+        Get a list of the servers with the smallest load total and return one at random
+        :param queryset: optional queryset to limit the search
+        :return: a server with the smallest load total
+        """
+        if queryset is None:
+            queryset = BBBServer.objects
 
         # Get all servers with a calculated load attribute
-        servers = BBBServer.objects\
-            .annotate(load=Sum("meeting__load", filter=Q(meeting__ended=False)))\
-            .order_by("load")\
+        servers = queryset \
+            .annotate(load=Sum("meeting__load", filter=Q(meeting__ended=False))) \
+            .order_by("load") \
             .all()
 
         # Remove server above smallest load
@@ -164,10 +168,18 @@ class Create(_GetView):
         else:
             i = len(servers)
         servers = servers[:i]
-        # return self.respond(True, data={"server": [{"url": server.url, "load": server.load} for server in servers]})
 
         # Choose one at random
-        server = random.choice(servers)
+        return random.choice(servers)
+
+    def process(self, parameters: dict):
+        # Require meetingID
+        try:
+            meeting_id = parameters["meetingID"]
+        except KeyError:
+            return self.missing_meeting_id()
+
+        server = self.get_next_server()
 
         # Create meeting
         response = server.send_api_request("create", parameters)
@@ -429,3 +441,55 @@ class GetRecordingTextTracks(_GetView):
 
 class PutRecordingTestTracks(_GetView):
     pass
+
+# Custom API endpoints
+
+class Move(_GetView):
+
+    def process(self, parameters: dict):
+        # Require meetingID
+        try:
+            meeting_id = parameters["meetingID"]
+        except KeyError:
+            return self.missing_meeting_id()
+
+        try:
+            meeting = Meeting.objects.get(meeting_id=meeting_id)
+        except Meeting.DoesNotExist:
+            return self.respond(
+                False, "notFound",
+                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
+            )
+
+        if "serverID" in parameters:
+            try:
+                server = BBBServer.objects.get(id=parameters["serverID"])
+            except BBBServer.DoesNotExist:
+                return self.respond(
+                    False, "notFound",
+                    "We don't have a server with that server ID"
+                )
+        else:
+            server = Create.get_next_server(BBBServer.objects.exclude(id=meeting.server.id))
+
+        if server == meeting.server:
+            return self.respond(False, "sameServer", "Origin and destination server are the same.")
+
+        # End meeting
+        response = meeting.server.send_api_request("end", {"meetingID": meeting_id, "password": ""})
+        if response["returncode"] == "SUCCESS":
+            meeting.ended = True
+            meeting.save()
+        else:
+            return self.respond(data=response)
+
+        # Create meeting
+        response = server.send_api_request("create", {})  # TODO save original params
+        if response["returncode"] == "SUCCESS" and not Meeting.running.filter(meeting_id=meeting_id).exists():
+            Meeting.objects.create(
+                meeting_id=response["meetingID"],
+                internal_id=response["internalMeetingID"],
+                server=server,
+                load=parameters["load"] if "load" in parameters else 1,
+            )
+        return self.respond(data=response)
