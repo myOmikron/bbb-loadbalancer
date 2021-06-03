@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/3.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -98,7 +99,7 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'default': {
-            'format': '{name} {asctime} {message}',
+            'format': '{asctime} {message}',
             'style': '{',
             'datefmt': '%d/%b/%Y %H:%M:%S',
         },
@@ -113,27 +114,31 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'default'
         },
-        'file': {
+        'loadbalancer': {
             'class': 'logging.FileHandler',
-            'filename': config.logging.file,
+            'filename': os.path.join(config.log_dir, 'loadbalancer.log'),
+            'formatter': 'default'
         },
-        'null': {
-            'class': 'logging.NullHandler',
+        'django': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(config.log_dir, 'django.log'),
+            'formatter': 'default'
         }
     },
     'loggers': {
         'api': {
-            'handlers': ['console', 'file'],
-            'level': config.logging.level,
+            'handlers': ['console', 'loadbalancer'],
+            'level': 'INFO',
             'propagate': True,
         },
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'django'],
             'filter': ['require_debug_true'],
             'propagate': True,
         },
         'django.server': {
-            'handlers': ['null'],
+            'handlers': ['django'],
+            'filter': ['require_debug_true'],
         }
     }
 }

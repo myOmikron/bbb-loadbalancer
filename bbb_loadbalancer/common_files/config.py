@@ -24,6 +24,4 @@ class LoadBalancerConfig(staticconfig.Config):
         self.player.api_url = "https://change_me/api/v1/"
         self.player.rcp_secret = "change_me"
 
-        self.logging = staticconfig.Namespace()
-        self.logging.file = "/var/log/bbb-loadbalancer.log"
-        self.logging.level = "INFO"
+        self.log_dir = "/var/log/bbb-loadbalancer"
