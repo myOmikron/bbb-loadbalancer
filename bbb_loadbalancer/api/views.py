@@ -60,6 +60,8 @@ class _GetView(View):
         checksum = request.GET.get("checksum")
         query_string = _checksum_regex.sub("", request.META["QUERY_STRING"])
 
+        logger.info(f"GET {request.get_full_path()}")
+
         # Try different hashing algorithms
         for hash_algo in _checksum_algos:
             if hash_algo(endpoint + query_string + settings.SHARED_SECRET) == checksum:
@@ -109,6 +111,7 @@ class _GetView(View):
             response["returncode"] = "FAILED"
             assert message_key is not None and message is not None, \
                 "Arguments 'message' and 'message_key' are required when 'success' is False"
+            logger.info(f"FAILED: {message_key} | {message}")
 
         if message:
             response["message"] = message
@@ -132,6 +135,7 @@ class _GetView(View):
 class DefaultView(_GetView):
 
     def get(self, request: HttpRequest, *args, **kwargs):
+        logger.info(f"GET {request.path}")
         return XmlResponse(self.respond(False, "unsupportedRequest", "This request is not supported."))
 
 
@@ -173,6 +177,7 @@ class Create(_GetView):
                 server=server,
                 load=1,
             )
+            logger.info(f"SUCCESS: created on f{server}")
         return self.respond(data=response)
 
 
@@ -193,9 +198,9 @@ class Join(_GetView):
                 "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
             )
 
-        return HttpResponseRedirect(
-            meeting.server.build_api_url("join", parameters)
-        )
+        redirect = meeting.server.build_api_url("join", parameters)
+        logger.info(f"-> {redirect}")
+        return HttpResponseRedirect(redirect)
 
 
 class IsMeetingRunning(_GetView):
