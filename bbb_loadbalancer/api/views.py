@@ -129,6 +129,12 @@ class _GetView(View):
         raise NotImplementedError
 
 
+class DefaultView(_GetView):
+
+    def get(self, request: HttpRequest, *args, **kwargs):
+        return XmlResponse(self.respond(False, "unsupportedRequest", "This request is not supported."))
+
+
 class Create(_GetView):
 
     def process(self, parameters: dict):
