@@ -18,4 +18,4 @@ class BBBServerAdmin(admin.ModelAdmin):
 
 @admin.register(Meeting)
 class MeetingAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "ended")
+    list_display = ("ended", "__str__", "server")
