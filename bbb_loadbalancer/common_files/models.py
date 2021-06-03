@@ -9,6 +9,7 @@ from jxmlease import parse
 
 
 class BBBServer(models.Model):
+    server_id = models.IntegerField(unique=True)
     url = models.CharField(max_length=255, default="")
     secret = models.CharField(max_length=255, default="")
 

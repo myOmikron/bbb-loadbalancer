@@ -464,7 +464,7 @@ class Move(_GetView):
 
         if "serverID" in parameters:
             try:
-                server = BBBServer.objects.get(id=parameters["serverID"])
+                server = BBBServer.objects.get(server_id=parameters["serverID"])
             except BBBServer.DoesNotExist:
                 return self.respond(
                     False, "notFound",

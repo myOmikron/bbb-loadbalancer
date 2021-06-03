@@ -13,10 +13,11 @@ clickable_url.__name__ = "url"
 
 @admin.register(BBBServer)
 class BBBServerAdmin(admin.ModelAdmin):
-    list_display = ("__str__", clickable_url)
+    list_display = ("__str__", "server_id", clickable_url)
+    ordering = ("server_id", )
 
 
 @admin.register(Meeting)
 class MeetingAdmin(admin.ModelAdmin):
     list_display = ("__str__", "server", "ended")
-    ordering = ("ended",)
+    ordering = ("ended", )
