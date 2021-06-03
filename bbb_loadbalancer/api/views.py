@@ -70,9 +70,6 @@ class _GetView(View):
 
         # Get parameters as simple dict without checksum
         parameters = dict((key, request.GET.get(key)) for key in request.GET if key != "checksum")
-        missing_parameters = [param for param in self.required_parameters if param not in parameters]
-        if len(missing_parameters) > 0:
-            return self.respond(False, "", "")  # TODO: error message
 
         # Call to subclass for actual processing logic
         response = self.process(parameters)
@@ -123,15 +120,23 @@ class _GetView(View):
 
         return {"response": response}
 
+    def missing_meeting_id(self) -> dict:
+        return self.respond(
+            False, "missingParamMeetingID", "You must specify a meeting ID for the meeting."
+        )
+
     def process(self, parameters: dict):
         raise NotImplementedError
 
 
 class Create(_GetView):
-    required_parameters = ["meetingID"]
 
     def process(self, parameters: dict):
-        meeting_id = parameters["meetingID"]
+        # Require meetingID
+        try:
+            meeting_id = parameters["meetingID"]
+        except KeyError:
+            return self.missing_meeting_id()
 
         # Get all servers with a calculated load attribute
         servers = BBBServer.objects\
@@ -166,10 +171,9 @@ class Create(_GetView):
 
 
 class Join(_GetView):
-    required_parameters = ["fullName", "meetingID", "password"]
 
     def process(self, parameters: dict):
-        meeting_id = parameters["meetingID"]
+        meeting_id = parameters["meetingID"]  # TODO error handling
 
         try:
             meeting = Meeting.running.get(meeting_id=meeting_id)
@@ -185,10 +189,13 @@ class Join(_GetView):
 
 
 class IsMeetingRunning(_GetView):
-    required_parameters = ["meetingID"]
 
     def process(self, parameters: dict):
-        meeting_id = parameters["meetingID"]
+        # Require meetingID
+        try:
+            meeting_id = parameters["meetingID"]
+        except KeyError:
+            return self.missing_meeting_id()
 
         if Meeting.running.filter(meeting_id=meeting_id).exists():
             return self.respond(data={"running": "true"})
@@ -197,10 +204,13 @@ class IsMeetingRunning(_GetView):
 
 
 class End(_GetView):
-    required_parameters = ["password", "meetingID"]
 
     def process(self, parameters: dict):
-        meeting_id = parameters["meetingID"]
+        # Require meetingID
+        try:
+            meeting_id = parameters["meetingID"]
+        except KeyError:
+            return self.missing_meeting_id()
 
         try:
             meeting = Meeting.running.get(meeting_id=meeting_id)
@@ -219,10 +229,13 @@ class End(_GetView):
 
 
 class GetMeetingInfo(_GetView):
-    required_parameters = ["meetingID"]
 
     def process(self, parameters: dict):
-        meeting_id = parameters["meetingID"]
+        # Require meetingID
+        try:
+            meeting_id = parameters["meetingID"]
+        except KeyError:
+            return self.missing_meeting_id()
 
         try:
             meeting = Meeting.running.get(meeting_id=meeting_id)
@@ -237,7 +250,6 @@ class GetMeetingInfo(_GetView):
 
 
 class GetMeetings(_GetView):
-    required_parameters = []
 
     def process(self, parameters: dict):
         meetings = []
@@ -265,7 +277,6 @@ class GetMeetings(_GetView):
 
 
 class GetRecordings(_GetView):
-    required_parameters = []
 
     def process(self, parameters: dict):
         recordings = []
