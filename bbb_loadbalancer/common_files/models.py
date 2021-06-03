@@ -9,9 +9,16 @@ from jxmlease import parse
 
 
 class BBBServer(models.Model):
+    ENABLED = "ENABLED"
+    DISABLED = "DISABLED"
+    PANIC = "PANIC"
+
     server_id = models.IntegerField(unique=True)
     url = models.CharField(max_length=255, default="")
     secret = models.CharField(max_length=255, default="")
+    state = models.CharField(max_length=255, default=ENABLED,
+                             choices=((ENABLED, "enabled"), (DISABLED, "disabled"), (PANIC, "panic")))
+    reachable = models.BooleanField(default=True)
 
     @property
     def api_url(self):
