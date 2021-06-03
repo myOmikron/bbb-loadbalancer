@@ -336,8 +336,7 @@ class GetRecordings(_GetView):
             "recordings": recordings
         }
         params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, "getRecordings")
-        #response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"})
-        response = httpx.get("http://127.0.0.1:8000/bigbluebutton/api/getMeetings?checksum=foo")
+        response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"})
 
         # Strip the leading <?xml version="1.0" encoding="utf-8"?>
         xml_response = response.text
