@@ -50,10 +50,14 @@ def XmlResponse(data, *args, **kwargs):
     return HttpResponse(emit_xml(data), *args, content_type="text/xml", **kwargs)
 
 
-class _GetView(View):
-    _response: dict
-    required_parameters: list = []
+class EarlyResponse(RuntimeError):
 
+    def __init__(self, response: dict):
+        super().__init__()
+        self.response = response
+
+
+class _GetView(View):
     def get(self, request: HttpRequest, *args, **kwargs):
         # Get data for checksum test
         endpoint = request.path.split("/")[-1]
@@ -74,9 +78,15 @@ class _GetView(View):
         parameters = dict((key, request.GET.get(key)) for key in request.GET if key != "checksum")
 
         # Call to subclass for actual processing logic
-        response = self.process(parameters)
-        assert response is not None, \
-            "The process method didn't return a response"
+        try:
+            response = self.process(parameters)
+            assert response is not None, \
+                "The process method didn't return a response"
+        except EarlyResponse as early_response:
+            response = early_response.response
+        except BaseException:
+            logger.exception("FAILED due to exception:")
+            response = self.respond(False, "internalError", "An internal server error occurred.")
 
         # Wrap response with XmlResponse if necessary
         if isinstance(response, dict):
@@ -123,10 +133,40 @@ class _GetView(View):
 
         return {"response": response}
 
-    def missing_meeting_id(self) -> dict:
-        return self.respond(
-            False, "missingParamMeetingID", "You must specify a meeting ID for the meeting."
-        )
+    def get_meeting_id(self, parameters: dict) -> str:
+        """
+        Helper method to get the meetingID and respond with an error if it's missing
+        :param parameters: The parameters from the process method call
+        :type parameters: dict
+        :return: meetingID
+        :rtype: str
+        :raises EarlyResponse: missingParamMeetingID
+        """
+        if "meetingID" in parameters:
+            return parameters["meetingID"]
+        else:
+            raise EarlyResponse(self.respond(
+                False, "missingParamMeetingID",
+                "You must specify a meeting ID for the meeting."
+            ))
+
+    def get_meeting(self, parameters: dict) -> Meeting:
+        """
+        Helper method to get the running meeting and respond with an error if there is none
+        :param parameters: The parameters from the process method call
+        :type parameters: dict
+        :return: running meeting
+        :rtype: Meeting
+        :raises EarlyResponse: notFound
+        """
+        meeting_id = self.get_meeting_id(parameters)
+        try:
+            return Meeting.running.get(meeting_id=meeting_id)
+        except Meeting.DoesNotExist:
+            raise EarlyResponse(self.respond(
+                False, "notFound",
+                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
+            )) from None
 
     def process(self, parameters: dict):
         raise NotImplementedError
@@ -178,12 +218,7 @@ class Create(_GetView):
         return random.choice(servers)
 
     def process(self, parameters: dict):
-        # Require meetingID
-        try:
-            meeting_id = parameters["meetingID"]
-        except KeyError:
-            return self.missing_meeting_id()
-
+        meeting_id = self.get_meeting_id(parameters)
         server = self.get_next_server()
 
         # Create meeting
@@ -203,20 +238,7 @@ class Create(_GetView):
 class Join(_GetView):
 
     def process(self, parameters: dict):
-        # Require meetingID
-        try:
-            meeting_id = parameters["meetingID"]
-        except KeyError:
-            return self.missing_meeting_id()
-
-        try:
-            meeting = Meeting.running.get(meeting_id=meeting_id)
-        except Meeting.DoesNotExist:
-            return self.respond(
-                False, "notFound",
-                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
-            )
-
+        meeting = self.get_meeting(parameters)
         redirect = meeting.server.build_api_url("join", parameters)
         logger.info(f"-> {redirect}")
         return HttpResponseRedirect(redirect)
@@ -225,11 +247,7 @@ class Join(_GetView):
 class IsMeetingRunning(_GetView):
 
     def process(self, parameters: dict):
-        # Require meetingID
-        try:
-            meeting_id = parameters["meetingID"]
-        except KeyError:
-            return self.missing_meeting_id()
+        meeting_id = self.get_meeting_id(parameters)
 
         if Meeting.running.filter(meeting_id=meeting_id).exists():
             return self.respond(data={"running": "true"})
@@ -240,19 +258,7 @@ class IsMeetingRunning(_GetView):
 class End(_GetView):
 
     def process(self, parameters: dict):
-        # Require meetingID
-        try:
-            meeting_id = parameters["meetingID"]
-        except KeyError:
-            return self.missing_meeting_id()
-
-        try:
-            meeting = Meeting.running.get(meeting_id=meeting_id)
-        except Meeting.DoesNotExist:
-            return self.respond(
-                False, "notFound",
-                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
-            )
+        meeting = self.get_meeting(parameters)
 
         response = meeting.server.send_api_request("end", parameters)
         if response["returncode"] == "SUCCESS":
@@ -265,20 +271,7 @@ class End(_GetView):
 class GetMeetingInfo(_GetView):
 
     def process(self, parameters: dict):
-        # Require meetingID
-        try:
-            meeting_id = parameters["meetingID"]
-        except KeyError:
-            return self.missing_meeting_id()
-
-        try:
-            meeting = Meeting.running.get(meeting_id=meeting_id)
-        except Meeting.DoesNotExist:
-            return self.respond(
-                False, "notFound",
-                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
-            )
-
+        meeting = self.get_meeting(parameters)
         response = meeting.server.send_api_request("getMeetingInfo", parameters)
         return XmlResponse({"response": response})
 
