@@ -2,6 +2,7 @@ import argparse
 import os
 
 import django
+from django.conf import settings
 
 from .argument_types import server, state
 from common_files.models import BBBServer
@@ -23,11 +24,24 @@ def handle_add():
     if BBBServer.objects.filter(server_id=args.server_id).exists():
         parser.error("A server with this id exists already")
 
-    BBBServer.objects.create(
-        server_id=args.server_id,
-        url=args.url,
-        secret=args.secret
-    )
+    print(f"Please add this ssh key on the server for the user '{settings.config.ssh_user}':")
+    with open("~/.ssh/id_rsa.pub") as f:
+        print(f.read())
+
+    print("\nPress [Enter] to continue")
+    try:
+        input()
+    except KeyboardInterrupt:
+        pass
+
+    if os.system(f"ssh {settings.config.ssh_user}@{args.url} 'echo Success'") == 0:
+        BBBServer.objects.create(
+            server_id=args.server_id,
+            url=args.url,
+            secret=args.secret
+        )
+    else:
+        print("Failed to establish a ssh connection")
 
 
 remove = subparsers.add_parser("remove", description="Remove a server")
