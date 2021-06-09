@@ -1,3 +1,5 @@
+import re
+
 from common_files.models import BBBServer
 
 
@@ -21,3 +23,13 @@ def state(string: str) -> str:
     else:
         raise ValueError("Invalid state argument")
 
+
+def bbb_url(string: str) -> str:
+    match = bbb_url.re.match(string)
+    if match is None:
+        raise ValueError("Please use the url as given by 'bbb-conf --secret'!")
+    else:
+        return string
+
+
+bbb_url.re = re.compile(r"https?://(.*)/bigbluebutton/?")

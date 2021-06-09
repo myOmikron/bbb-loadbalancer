@@ -10,7 +10,7 @@ import argparse
 from common_files.config import LoadBalancerConfig
 from common_files.models import BBBServer
 
-from .argument_types import server, state
+from .argument_types import server, state, bbb_url
 from .set_state import set_state
 
 
@@ -21,7 +21,7 @@ subparsers = parser.add_subparsers(title="commands", dest="command")
 
 add = subparsers.add_parser("add", description="Add a server")
 add.add_argument('server_id', type=int, help="A unique id to identify the server in requests")
-add.add_argument('url', type=str, help="The bigbluebutton server's url")
+add.add_argument('url', type=bbb_url, help="The bigbluebutton server's url")
 add.add_argument('secret', type=str, help="The bigbluebutton server's shared secret")
 def handle_add():
     if BBBServer.objects.filter(server_id=args.server_id).exists():
@@ -37,7 +37,7 @@ def handle_add():
     except KeyboardInterrupt:
         pass
 
-    if os.system(f"ssh {config.ssh_user}@{args.url} 'echo Success'") == 0:
+    if os.system(f"ssh {config.ssh_user}@{bbb_url.re.match(args.url).group(1)} 'echo Success'") == 0:
         BBBServer.objects.create(
             server_id=args.server_id,
             url=args.url,
