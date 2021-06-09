@@ -27,4 +27,5 @@ server {
         proxy_set_header Host $host;
     }
 
+    include /etc/bbb-loadbalancer/nginx/*.location;
 }
