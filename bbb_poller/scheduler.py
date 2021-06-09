@@ -11,22 +11,37 @@ import settings
 logger = logging.getLogger(__name__)
 
 
-async def _execute_check(check):
-    for i in range(1, 4):
-        ret: checks.CheckResult = await check.task()
-        if ret.return_code == 0:
-            logger.info(f"{check.check_name}: #{check.server_id}: OK : {ret.message}")
-            if not check.reachable:
-                logger.debug("Writing to db...")
-                db.execute_task(db.set_server_reachability(True, check.server_id))
+async def _execute_checks(server, check_list):
+    server_online = True
+    for check in check_list:
+        for i in range(1, 4):
+            ret: checks.CheckResult = await check.task()
+            if ret.return_code == 0:
+                logger.info(f"{check.check_name}: #{check.server_id}: OK : {ret.message}")
+                break
+            logger.error(f"{check.check_name}: #{check.server_id}: Try {i}/3: Check was not successful: {ret.message}")
+            if i < 3:
+                await asyncio.sleep(1)
+        else:
+            server_online = False
+            logger.error(f"{check.check_name}: #{check.server_id}: failed")
+            logger.error(f"Skipping all remaining checks")
+            logger.debug("Writing to db...")
             break
-        logger.error(f"{check.check_name}: #{check.server_id}: Try {i}/3: Check was not successful: {ret.message}")
-        if i < 3:
-            await asyncio.sleep(5)
+    if not server_online:
+        logger.debug("Writing to db...")
+        db.execute_task(db.set_server_reachability(False, server))
     else:
-        logger.error(f"{check.check_name}: #{check.server_id}: failed")
+        db.execute_task(db.set_server_reachability(True, server))
+
+
+async def _execute_meeting(meeting):
+    server = db.execute_task(db.get_server_for_meeting(meeting.meeting_id))
+    ret = await checks.get_running_meetings(meeting.meeting_id, server)()
+    if not ret:
+        logger.info(f"Meeting {meeting.meeting_id} ended on server {server.server_id}")
         logger.debug(f"Writing to db...")
-        db.execute_task(db.set_server_reachability(False, check.server_id))
+        db.execute_task(db.set_meeting_ended(meeting.meeting_id))
 
 
 class Scheduler:
@@ -35,7 +50,8 @@ class Scheduler:
     Tasks have to be Checks in every case.
     """
     def __init__(self):
-        self.checks = []
+        self.checks = {}
+        self.meetings = []
 
     def schedule_tasks(self, server, client):
         # File Checks
@@ -54,7 +70,7 @@ class Scheduler:
         ]
         file = os.path.join(settings.PLUGIN_PATH, "check_running_processes.sh")
         for process in process_list:
-            self.checks.append(checks.process_check(
+            self.checks[server.server_id].append(checks.process_check(
                 file,
                 f"/bin/bash {file} {server.url.lstrip('https://').split('/')[0]} {settings.SSH_USER} {process}",
                 server.server_id,
@@ -64,7 +80,7 @@ class Scheduler:
             ))
         file = os.path.join(settings.PLUGIN_PATH, "check_systemd.sh")
         for systemd in systemd_list:
-            self.checks.append(checks.process_check(
+            self.checks[server.server_id].append(checks.process_check(
                 file,
                 f"/bin/bash {file} {server.url.lstrip('https://').split('/')[0]} {settings.SSH_USER} {systemd}",
                 server.server_id,
@@ -72,19 +88,29 @@ class Scheduler:
                 server.secret,
                 server.reachable
             ))
-        self.checks.append(checks.bbb_api_check(client, server.server_id, server.url, server.secret, server.reachable))
+        self.checks[server.server_id].append(checks.bbb_api_check(client, server.server_id, server.url, server.secret, server.reachable))
 
-    async def run(self, interval=60):
+    async def run(self, interval=30):
         client = httpx.AsyncClient()
 
         while True:
-            logger.info("Clearing Checks")
-            self.checks = []
+            logger.info("Clearing checks and running meetings")
+            self.checks = {}
+            self.meetings = []
             logger.info("Reloading server")
             server_list = db.execute_task(db.get_server)
             for server in server_list:
+                self.checks[server.server_id] = []
                 self.schedule_tasks(server, client)
 
-            for check in self.checks:
-                asyncio.create_task(_execute_check(check))
+            meeting_list = db.execute_task(db.get_meetings)
+            for meeting in meeting_list:
+                self.meetings.append(meeting)
+
+            for server in self.checks:
+                asyncio.create_task(_execute_checks(server, self.checks[server]))
+
+            for meeting in self.meetings:
+                asyncio.create_task(_execute_meeting(meeting))
+
             await asyncio.sleep(interval)
