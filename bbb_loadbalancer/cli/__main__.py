@@ -1,8 +1,16 @@
 import argparse
+import os
 
-from cli.argument_types import server, state
+import django
+from django.conf import settings
+
+from .argument_types import server, state
 from common_files.models import BBBServer
-from cli.set_state import set_state
+from .set_state import set_state
+
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bbb_loadbalancer.settings')
+django.setup()
 
 parser = argparse.ArgumentParser(description="Cli for bbb-loadbalancer")
 subparsers = parser.add_subparsers(title="commands", dest="command")
@@ -16,11 +24,24 @@ def handle_add():
     if BBBServer.objects.filter(server_id=args.server_id).exists():
         parser.error("A server with this id exists already")
 
-    BBBServer.objects.create(
-        server_id=args.server_id,
-        url=args.url,
-        secret=args.secret
-    )
+    print(f"Please add this ssh key on the server for the user '{settings.config.ssh_user}':")
+    with open("~/.ssh/id_rsa.pub") as f:
+        print(f.read())
+
+    print("\nPress [Enter] to continue")
+    try:
+        input()
+    except KeyboardInterrupt:
+        pass
+
+    if os.system(f"ssh {settings.config.ssh_user}@{args.url} 'echo Success'") == 0:
+        BBBServer.objects.create(
+            server_id=args.server_id,
+            url=args.url,
+            secret=args.secret
+        )
+    else:
+        print("Failed to establish a ssh connection")
 
 
 remove = subparsers.add_parser("remove", description="Remove a server")
@@ -70,7 +91,7 @@ def handle_disable():
 
 enable = subparsers.add_parser("enable", description="Enable a server, so new meetings can be created on it.")
 enable.add_argument('server', type=server, help="The server's id")
-def handle_handle_enable():
+def handle_enable():
     set_state(args.server, BBBServer.ENABLED)
 
 
