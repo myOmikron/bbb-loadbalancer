@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-import sys
+import time
 
 import django
 
@@ -17,8 +17,10 @@ async def main():
         datefmt='%d-%m-%Y %H:%M:%S',
         level=logging.INFO
     )
+    logging.Formatter.converter = time.gmtime
 
     from scheduler import Scheduler
+
     scheduler = Scheduler()
     await scheduler.run()
 
