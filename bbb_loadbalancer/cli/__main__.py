@@ -1,8 +1,15 @@
 import argparse
+import os
 
-from cli.argument_types import server, state
+import django
+
+from .argument_types import server, state
 from common_files.models import BBBServer
-from cli.set_state import set_state
+from .set_state import set_state
+
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bbb_loadbalancer.settings')
+django.setup()
 
 parser = argparse.ArgumentParser(description="Cli for bbb-loadbalancer")
 subparsers = parser.add_subparsers(title="commands", dest="command")
@@ -70,7 +77,7 @@ def handle_disable():
 
 enable = subparsers.add_parser("enable", description="Enable a server, so new meetings can be created on it.")
 enable.add_argument('server', type=server, help="The server's id")
-def handle_handle_enable():
+def handle_enable():
     set_state(args.server, BBBServer.ENABLED)
 
 
