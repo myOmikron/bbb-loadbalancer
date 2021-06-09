@@ -9,3 +9,4 @@ PyMySQL~=1.0.2
 # Common
 Django==3.2.3
 staticconfig~=0.0.6
+mysqlclient~=2.0.3
