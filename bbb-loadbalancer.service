@@ -1,6 +1,5 @@
 [Unit]
-Description=BBB-Loadbalancer Sync service
-After=bbb-web.service
+Description=BBB-Loadbalancer service
 
 [Install]
 WantedBy=multi-user.target
