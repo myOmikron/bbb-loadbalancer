@@ -26,7 +26,7 @@ class BBBServer(models.Model):
         Ensure the url used for api calls looks correct.
         """
         url = self.url
-        if not re.match('/[http|https]:\/\/[a-zA-Z1-9.]*\/bigbluebutton\/api\//', url):
+        if not re.match(r'/(http|https)://[a-zA-Z1-9.]*/bigbluebutton/api//', url):
             if not url.startswith("http://") and not url.startswith("https://"):
                 url = "https://" + url
             if not url.endswith("/bigbluebutton/api/"):
