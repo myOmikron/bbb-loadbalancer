@@ -25,3 +25,5 @@ class LoadBalancerConfig(staticconfig.Config):
         self.player.rcp_secret = "change_me"
 
         self.log_dir = "/var/log/bbb-loadbalancer"
+
+        self.ssh_user = "root"

@@ -25,4 +25,4 @@ INSTALLED_APPS = [
 ]
 
 PLUGIN_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
-SSH_USER = "root"
+SSH_USER = config.ssh_user
