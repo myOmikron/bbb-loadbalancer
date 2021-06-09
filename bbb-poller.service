@@ -1,0 +1,12 @@
+[Unit]
+Description=BBB-Loadbalancer Poller service
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+ExecStart=/home/bbb-loadbalancer/bbb-loadbalancer/venv/bin/python3 main.py
+User=bbb-loadbalancer
+WorkingDirectory=/home/bbb-loadbalancer/bbb-loadbalancer/bbb_poller/
+Restart=always
+KillSignal=SIGKILL
