@@ -30,6 +30,10 @@ SECRET_KEY = 'change_me'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
+# Add the pattern our ansible scripts expects before overwriting it with the actual value
+# This is easier than adjusting our ansible role
+ALLOWED_HOSTS = [
+]
 ALLOWED_HOSTS = config.django.allowed_hosts
 
 
