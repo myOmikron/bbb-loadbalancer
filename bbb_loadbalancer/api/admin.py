@@ -20,7 +20,8 @@ def disable_server(modeladmin, request, queryset):
 
 @admin.register(BBBServer)
 class BBBServerAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "server_id", "enabled", "api_mate")
+    list_display = ("bbb_server", "reachable", "enabled", "api_mate")
+    list_filter = ("state", "reachable")
     ordering = ("server_id", )
     actions = (enable_server, disable_server)
 
@@ -30,6 +31,9 @@ class BBBServerAdmin(admin.ModelAdmin):
 
     def api_mate(self, obj: BBBServer) -> str:
         return format_html("<a href=\"{0}\">{0}</a>", obj.get_absolute_url())
+
+    def bbb_server(self, obj: BBBServer) -> str:
+        return f"#{obj.server_id} {obj}"
 
 
 # ------- #
