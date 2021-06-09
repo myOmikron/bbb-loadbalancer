@@ -231,7 +231,7 @@ class Create(_GetView):
                 load=parameters["load"] if "load" in parameters else 1,
                 create_query=parameters,
             )
-            logger.info(f"SUCCESS: created on f{server}")
+            logger.info(f"SUCCESS: created on {server}")
         return self.respond(data=response)
 
 
