@@ -28,7 +28,7 @@ def handle_add():
         parser.error("A server with this id exists already")
 
     print(f"Please add this ssh key on the server for the user '{config.ssh_user}':")
-    with open("~/.ssh/id_rsa.pub") as f:
+    with open(os.path.expanduser("~/.ssh/id_rsa.pub")) as f:
         print(f.read())
 
     print("\nPress [Enter] to continue")
