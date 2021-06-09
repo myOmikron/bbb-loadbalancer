@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 
+from bigbluebutton_api_python import BigBlueButton
 
 logger = logging.getLogger("poller")
 
@@ -59,3 +60,12 @@ def process_check(file, cmd, server_id, server_url, server_secret, reachable):
         reachable=reachable,
         task=execute_file_check
     )
+
+
+def get_running_meetings(meeting_id, server):
+    async def execute_request():
+        b = BigBlueButton(server.url, server.secret)
+        ret = b.is_meeting_running(meeting_id).is_meeting_running()
+        await asyncio.sleep(0.01)
+        return ret
+    return execute_request
