@@ -86,5 +86,5 @@ class Scheduler:
                 self.schedule_tasks(server, client)
 
             for check in self.checks:
-                await _execute_check(check)
+                asyncio.create_task(_execute_check(check))
             await asyncio.sleep(interval)
