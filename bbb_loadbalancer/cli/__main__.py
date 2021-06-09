@@ -1,17 +1,20 @@
-import argparse
 import os
-
 import django
-from django.conf import settings
-
-from .argument_types import server, state
-from common_files.models import BBBServer
-from .set_state import set_state
-
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bbb_loadbalancer.settings')
 django.setup()
 
+
+import argparse
+
+from common_files.config import LoadBalancerConfig
+from common_files.models import BBBServer
+
+from .argument_types import server, state
+from .set_state import set_state
+
+
+config = LoadBalancerConfig.from_json("../config.json")
 parser = argparse.ArgumentParser(description="Cli for bbb-loadbalancer")
 subparsers = parser.add_subparsers(title="commands", dest="command")
 
@@ -24,7 +27,7 @@ def handle_add():
     if BBBServer.objects.filter(server_id=args.server_id).exists():
         parser.error("A server with this id exists already")
 
-    print(f"Please add this ssh key on the server for the user '{settings.config.ssh_user}':")
+    print(f"Please add this ssh key on the server for the user '{config.ssh_user}':")
     with open("~/.ssh/id_rsa.pub") as f:
         print(f.read())
 
@@ -34,7 +37,7 @@ def handle_add():
     except KeyboardInterrupt:
         pass
 
-    if os.system(f"ssh {settings.config.ssh_user}@{args.url} 'echo Success'") == 0:
+    if os.system(f"ssh {config.ssh_user}@{args.url} 'echo Success'") == 0:
         BBBServer.objects.create(
             server_id=args.server_id,
             url=args.url,
