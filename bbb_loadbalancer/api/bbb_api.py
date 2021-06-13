@@ -31,7 +31,7 @@ def build_api_url(self, api_call, params=None):
 
 
 def send_api_request(self, api_call, params=None, data=None):
-    url = self.build_api_url(api_call, params)
+    url = build_api_url(self, api_call, params)
 
     # GET request
     if data is None:
