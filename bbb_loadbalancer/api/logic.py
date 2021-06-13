@@ -4,6 +4,7 @@ The core logic of the loadbalancer
 import random
 
 from django.db.models import QuerySet, Sum, Q
+from typing import Tuple
 
 from api.bbb_api import send_api_request, build_api_url
 from common_files.config import LoadBalancerConfig
@@ -50,7 +51,7 @@ def get_next_server(queryset: QuerySet = None) -> BBBServer:
     return random.choice(servers)
 
 
-def create_meeting(server: BBBServer, meeting_id: str, parameters: dict = None) -> tuple[Meeting, dict]:
+def create_meeting(server: BBBServer, meeting_id: str, parameters: dict = None) -> Tuple[Meeting, dict]:
     if parameters is None:
         parameters = {}
 
