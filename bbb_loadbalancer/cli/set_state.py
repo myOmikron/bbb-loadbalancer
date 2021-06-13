@@ -1,3 +1,5 @@
+import sys
+from api.bbb_api import send_api_request
 from api.views import Create
 from common_files.models import BBBServer, Meeting
 
@@ -11,7 +13,7 @@ def set_state(server: BBBServer, state: str):
         for meeting in Meeting.running.filter(server=server):
             # Try sending the end call, hoping it can still reach the server
             try:
-                server.send_api_request(
+                send_api_request(server,
                     "end", {"meetingID": meeting.meeting_id, "password": meeting.create_query["moderatorPW"]}
                 )
             except:
@@ -22,7 +24,7 @@ def set_state(server: BBBServer, state: str):
 
             # Reopen the meeting on a new server
             new_server = Create.get_next_server()
-            response = new_server.send_api_request(
+            response = send_api_request(new_server,
                 "create", meeting.create_query
             )
             if response["returncode"] == "SUCCESS":
