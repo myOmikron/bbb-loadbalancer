@@ -1,18 +1,17 @@
 import hashlib
 import logging
-import random
 import re
 import os.path
 from collections import defaultdict
 
 import httpx
-from django.db.models import Sum, Q
 from django.http import HttpRequest, HttpResponseRedirect
 from django.views import View
 from jxmlease import XMLDictNode
 from rc_protocol import get_checksum
 
 from api.bbb_api import send_api_request, build_api_url
+from api.logic import get_next_server, create_meeting
 from api.response import XmlResponse, EarlyResponse, RawXMLString, respond
 from bbb_loadbalancer import settings
 from common_files.models import Meeting, BBBServer
@@ -115,53 +114,16 @@ class DefaultView(_GetView):
 
 class Create(_GetView):
 
-    @staticmethod
-    def get_next_server(queryset=None) -> BBBServer:
-        """
-        Get the next server to create a meeting on.
-
-        Get a list of the servers with the smallest load total and return one at random
-        :param queryset: optional queryset to limit the search (state and load will be handled)
-        :return: a server with the smallest load total
-        """
-        if queryset is None:
-            queryset = BBBServer.objects
-
-        # Get all servers with a calculated load attribute
-        servers = queryset \
-            .filter(state=BBBServer.ENABLED) \
-            .annotate(load=Sum("meeting__load", filter=Q(meeting__ended=False))) \
-            .order_by("load") \
-            .all()
-
-        # Remove server above smallest load
-        smallest_load = servers[0].load
-        for i in range(len(servers)):
-            server = servers[i]
-            if server.load != smallest_load:
-                break
-        else:
-            i = len(servers)
-        servers = servers[:i]
-
-        # Choose one at random
-        return random.choice(servers)
-
     def process(self, parameters: dict):
-        meeting_id = self.get_meeting_id(parameters)
-        server = self.get_next_server()
+        meeting, response = create_meeting(
+            get_next_server(),
+            self.get_meeting_id(parameters),
+            parameters,
+        )
 
-        # Create meeting
-        response = send_api_request(server, "create", parameters)
-        if response["returncode"] == "SUCCESS" and not Meeting.running.filter(meeting_id=meeting_id).exists():
-            Meeting.objects.create(
-                meeting_id=response["meetingID"],
-                internal_id=response["internalMeetingID"],
-                server=server,
-                load=parameters["load"] if "load" in parameters else 1,
-                create_query=parameters,
-            )
-            logger.info(f"SUCCESS: created on {server}")
+        if response["returncode"] == "SUCCESS":
+            logger.info(f"SUCCESS: created on {meeting.server}")
+
         return respond(data=response)
 
 
@@ -383,19 +345,7 @@ class PutRecordingTestTracks(_GetView):
 class Move(_GetView):
 
     def process(self, parameters: dict):
-        # Require meetingID
-        try:
-            meeting_id = parameters["meetingID"]
-        except KeyError:
-            return self.missing_meeting_id()
-
-        try:
-            meeting = Meeting.running.get(meeting_id=meeting_id)
-        except Meeting.DoesNotExist:
-            return respond(
-                False, "notFound",
-                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
-            )
+        meeting = self.get_meeting(parameters)
 
         if "serverID" in parameters:
             try:
@@ -406,14 +356,14 @@ class Move(_GetView):
                     "We don't have a server with that server ID"
                 )
         else:
-            server = Create.get_next_server(BBBServer.objects.exclude(id=meeting.server.id))
+            server = get_next_server(BBBServer.objects.exclude(id=meeting.server.id))
 
         if server == meeting.server:
             return respond(False, "sameServer", "Origin and destination server are the same.")
 
         # End meeting
         response = send_api_request(meeting.server,
-            "end", {"meetingID": meeting_id, "password": meeting.create_query["moderatorPW"]}
+            "end", {"meetingID": meeting.meeting_id, "password": meeting.create_query["moderatorPW"]}
         )
         if response["returncode"] == "SUCCESS":
             meeting.ended = True
@@ -422,17 +372,10 @@ class Move(_GetView):
             return respond(data=response)
 
         # Create meeting
-        response = send_api_request(server,
-            "create", meeting.create_query
-        )
-        if response["returncode"] == "SUCCESS" and not Meeting.running.filter(meeting_id=meeting_id).exists():
-            Meeting.objects.create(
-                meeting_id=response["meetingID"],
-                internal_id=response["internalMeetingID"],
-                server=server,
-                load=meeting.load,
-                create_query=meeting.create_query,
-            )
+        new_meeting, response = create_meeting(server, meeting.meeting_id, meeting.create_query)
+        if response["returncode"] == "SUCCESS":
+            logger.info(f"SUCCESS: moved from {meeting.server} to {new_meeting.server}")
+
         return respond(data=response)
 
 

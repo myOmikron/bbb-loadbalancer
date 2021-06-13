@@ -1,4 +1,5 @@
 import staticconfig
+import socket
 
 
 class LoadBalancerConfig(staticconfig.Config):
@@ -25,3 +26,4 @@ class LoadBalancerConfig(staticconfig.Config):
         self.log_dir = "/var/log/bbb-loadbalancer"
 
         self.ssh_user = "root"
+        self.hostname = socket.gethostname()
