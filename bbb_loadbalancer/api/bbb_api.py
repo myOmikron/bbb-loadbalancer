@@ -33,19 +33,19 @@ def build_api_url(self, api_call, params=None):
 def send_api_request(self, api_call, params=None, data=None):
     url = build_api_url(self, api_call, params)
 
-    # GET request
-    if data is None:
-        response = urlopen(url).read()
-    # POST request
-    else:
-        try:
+    try:
+        # GET request
+        if data is None:
+            response = urlopen(url).read()
+        # POST request
+        else:
             response = urlopen(url, data=urlencode(data).encode()).read()
-        except:
-            logger.exception(f"Couldn't call a bbb's api: {self}")
-            raise EarlyResponse(respond(
-                False, "noResponse",
-                "An internal server didn't respond. Try again in some seconds or contact your admin."
-            )) from None
+    except:
+        logger.exception(f"Couldn't call a bbb's api: {self}")
+        raise EarlyResponse(respond(
+            False, "noResponse",
+            "An internal server didn't respond. Try again in some seconds or contact your admin."
+        )) from None
 
     try:
         return parse(response)["response"]
