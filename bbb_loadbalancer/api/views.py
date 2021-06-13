@@ -114,6 +114,12 @@ class DefaultView(_GetView):
 # Bigbluebutton API endpoints #
 # --------------------------- #
 
+class Index(_GetView):
+
+    def process(self, parameters: dict, request: HttpRequest):
+        return respond(True, data={"version": "2.0"})
+
+
 class Create(_GetView):
 
     def process(self, parameters: dict, request: HttpRequest):

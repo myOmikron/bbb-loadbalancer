@@ -4,6 +4,7 @@ from api.views import *
 
 
 urlpatterns = [
+    path("", Index.as_view()),
     path("create", Create.as_view()),
     path("join", Join.as_view()),
     path("isMeetingRunning", IsMeetingRunning.as_view()),
@@ -20,6 +21,5 @@ urlpatterns = [
     path("move", Move.as_view()),
     path("getStatistics", GetStatistics.as_view()),
     path("rejoin", Rejoin.as_view()),
-    path('', DefaultView.as_view()),
 ]
 
