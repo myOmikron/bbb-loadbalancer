@@ -1,8 +1,10 @@
 import hashlib
+import json
 import logging
 import re
 import os.path
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 import httpx
 from django.http import HttpRequest, HttpResponseRedirect
@@ -11,12 +13,12 @@ from jxmlease import XMLDictNode
 from rc_protocol import get_checksum
 
 from api.bbb_api import send_api_request, build_api_url
-from api.logic import get_next_server, create_meeting
+from api.logic import get_next_server, create_meeting, config, Loadbalancer
 from api.response import XmlResponse, EarlyResponse, RawXMLString, respond
 from bbb_loadbalancer import settings
 from common_files.models import Meeting, BBBServer
 
-_checksum_regex = re.compile(r"&?checksum=[^&]+")
+_checksum_regex = re.compile(r"&?checksum=([^&]+)")
 _checksum_algos = [
     lambda string: hashlib.sha1(string.encode("utf-8")).hexdigest(),
     lambda string: hashlib.sha256(string.encode("utf-8")).hexdigest(),
@@ -47,7 +49,7 @@ class _GetView(View):
 
         # Call to subclass for actual processing logic
         try:
-            response = self.process(parameters)
+            response = self.process(parameters, request)
             assert response is not None, \
                 "The process method didn't return a response"
         except EarlyResponse as early_response:
@@ -97,7 +99,7 @@ class _GetView(View):
                 "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
             )) from None
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         raise NotImplementedError
 
 
@@ -114,7 +116,7 @@ class DefaultView(_GetView):
 
 class Create(_GetView):
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         meeting, response = create_meeting(
             get_next_server(),
             self.get_meeting_id(parameters),
@@ -129,16 +131,30 @@ class Create(_GetView):
 
 class Join(_GetView):
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         meeting = self.get_meeting(parameters)
         redirect = build_api_url(meeting.server, "join", parameters)
         logger.info(f"-> {redirect}")
-        return HttpResponseRedirect(redirect)
+        response = HttpResponseRedirect(redirect)
+
+        # Store query string in cookie
+        data = build_api_url(Loadbalancer, "rejoin", parameters)
+        data = data[data.find("?")+1:]
+        response.set_cookie(
+            "bbb_join",
+            data,
+            expires=datetime.now() + timedelta(days=7),
+            domain=config.hostname,
+            secure=True,
+            httponly=True,
+            samesite='Strict',
+        )
+        return response
 
 
 class IsMeetingRunning(_GetView):
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         meeting_id = self.get_meeting_id(parameters)
 
         if Meeting.running.filter(meeting_id=meeting_id).exists():
@@ -149,7 +165,7 @@ class IsMeetingRunning(_GetView):
 
 class End(_GetView):
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         meeting = self.get_meeting(parameters)
 
         response = send_api_request(meeting.server, "end", parameters)
@@ -162,7 +178,7 @@ class End(_GetView):
 
 class GetMeetingInfo(_GetView):
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         meeting = self.get_meeting(parameters)
         response = send_api_request(meeting.server, "getMeetingInfo", parameters)
         return XmlResponse({"response": response})
@@ -190,7 +206,7 @@ class GetMeetings(_GetView):
         else:
             return list(meetings_data)  # Multiple meetings
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         meetings = []
         for server in BBBServer.objects.all():
             meetings += self.from_server(server)
@@ -206,7 +222,7 @@ class GetMeetings(_GetView):
 
 class GetRecordings(_GetView):
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         recordings = []
         if "recordID" in parameters:
             recordings = list(map(str.strip, parameters["recordID"].split(",")))
@@ -239,7 +255,7 @@ class GetRecordings(_GetView):
 class PublishRecordings(_GetView):
     required_parameters = ["recordID", "publish"]
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         # Get a list of meetings to be published for each server
         meetings_per_server = defaultdict(list)
         for internal_id in map(str.strip, parameters["recordID"].split(",")):
@@ -274,7 +290,7 @@ class PublishRecordings(_GetView):
 class DeleteRecordings(_GetView):
     required_parameters = ["recordID"]
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         url = os.path.join(settings.config.player.api_url, "deleteRecordings")
         params = {
             "recordings": [record_id.strip() for record_id in parameters["recordID"].split(",")]
@@ -291,7 +307,7 @@ class DeleteRecordings(_GetView):
 class UpdateRecordings(_GetView):
     required_parameters = ["recordID"]
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         # Get a parameters dict without the 'recordID'
         meta_parameters = dict((key, value) for key, value in parameters.items() if key != "recordID")
 
@@ -344,7 +360,7 @@ class PutRecordingTestTracks(_GetView):
 
 class Move(_GetView):
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         meeting = self.get_meeting(parameters)
 
         if "serverID" in parameters:
@@ -385,7 +401,7 @@ class GetStatistics(_GetView):
 
     meeting_attributes = ["meetingID", "participantCount", "listenerCount", "voiceParticipantCount", "videoCount"]
 
-    def process(self, parameters: dict):
+    def process(self, parameters: dict, request: HttpRequest):
         servers = []
         for server in BBBServer.objects.all():
             meetings = []
@@ -396,3 +412,39 @@ class GetStatistics(_GetView):
             servers.append({"serverID": server.server_id, "meetings": {"meeting": meetings}})
 
         return respond(True, data={"servers": {"server": servers}})
+
+
+class Rejoin(_GetView):
+
+    def process(self, parameters: dict, request: HttpRequest):
+        try:
+            meeting = Meeting.objects.get(id=parameters["meetingID"])
+        except KeyError:
+            return respond(False, "missingParamMeetingID", "You must specify a meeting ID for the meeting.")
+        except Meeting.DoesNotExist:
+            return respond(
+                False, "notFound",
+                "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
+            )
+
+        if meeting.moved_to is None:
+            if "logoutURL" in meeting.create_query:
+                return HttpResponseRedirect(meeting.create_query["logoutURL"])
+            else:
+                # TODO
+                return respond(True, "notImplemented")
+        else:
+            # Follow moved_to links
+            new_meeting = meeting.moved_to
+            while new_meeting.moved_to is not None:
+                new_meeting = new_meeting.moved_to
+
+            # Verify cookie from last join
+            query_string = request.COOKIES.get("bbb_join")
+            checksum = _checksum_regex.match(query_string).group(1)
+            query_string = _checksum_regex.sub("", query_string)
+            if hashlib.sha1(("rejoin" + query_string + Loadbalancer.secret).encode('utf-8')).hexdigest() != checksum:
+                return respond(False, "checksumError", "You did not pass the checksum security check")
+
+            # TODO
+            return respond(True, "notImplemented", query_string)

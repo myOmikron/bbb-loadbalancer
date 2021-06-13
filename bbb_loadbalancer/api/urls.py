@@ -19,6 +19,7 @@ urlpatterns = [
     path("putRecordingTestTracks", PutRecordingTestTracks.as_view()),
     path("move", Move.as_view()),
     path("getStatistics", GetStatistics.as_view()),
+    path("rejoin", Rejoin.as_view()),
     path('', DefaultView.as_view()),
 ]
 
