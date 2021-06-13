@@ -430,17 +430,16 @@ class Rejoin(_GetView):
             if "logoutURL" in meeting.create_query:
                 return HttpResponseRedirect(meeting.create_query["logoutURL"])
             else:
-                # TODO
-                return respond(True, "notImplemented")
+                return HttpResponseRedirect(config.logoutURL)
         else:
             # Follow moved_to links
             new_meeting = meeting.moved_to
             while new_meeting.moved_to is not None:
                 new_meeting = new_meeting.moved_to
 
-            # Verify cookie from last join
+            # Get parameters from last join
             parameters = json.loads(request.COOKIES.get("bbb_join"))
             if validate_checksum(parameters, Loadbalancer.secret, salt="rejoin", use_time_component=False):
-                return respond(True, "notImplemented", data=parameters)
+                return HttpResponseRedirect(build_api_url(new_meeting.server, "join", parameters))
             else:
                 return XmlResponse(respond(False, "checksumError", "You did not pass the checksum security check"))

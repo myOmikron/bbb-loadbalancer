@@ -27,3 +27,4 @@ class LoadBalancerConfig(staticconfig.Config):
 
         self.ssh_user = "root"
         self.hostname = socket.gethostname()
+        self.logoutURL = "/"
