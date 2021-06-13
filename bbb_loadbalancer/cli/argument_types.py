@@ -7,9 +7,9 @@ def server(server_id: str) -> BBBServer:
     try:
         return BBBServer.objects.get(server_id=int(server_id))
     except ValueError:
-        raise ValueError("server ids must be integers") from None
+        raise ValueError("Server ids must be integers") from None
     except BBBServer.DoesNotExist:
-        raise ValueError("unknown server") from None
+        raise ValueError("Unknown server") from None
 
 
 def state(string: str) -> str:
