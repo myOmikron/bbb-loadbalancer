@@ -1,6 +1,6 @@
 # bbb_loadbalancer
 jxmlease==1.0.3
-rc-protocol==0.0.4
+rc-protocol==0.0.5
 gunicorn~=20.1.0
 
 # Poller

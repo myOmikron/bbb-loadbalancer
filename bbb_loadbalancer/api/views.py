@@ -10,7 +10,7 @@ import httpx
 from django.http import HttpRequest, HttpResponseRedirect
 from django.views import View
 from jxmlease import XMLDictNode
-from rc_protocol import get_checksum
+from rc_protocol import get_checksum, validate_checksum
 
 from api.bbb_api import send_api_request, build_api_url
 from api.logic import get_next_server, create_meeting, config, Loadbalancer
@@ -138,11 +138,10 @@ class Join(_GetView):
         response = HttpResponseRedirect(redirect)
 
         # Store query string in cookie
-        data = build_api_url(Loadbalancer, "rejoin", parameters)
-        data = data[data.find("?")+1:]
+        parameters["checksum"] = get_checksum(parameters, Loadbalancer.secret, use_time_component=False, salt="rejoin")
         response.set_cookie(
             "bbb_join",
-            data,
+            json.dumps(parameters),
             expires=datetime.now() + timedelta(days=7),
             domain=config.hostname,
             secure=True,
@@ -440,11 +439,8 @@ class Rejoin(_GetView):
                 new_meeting = new_meeting.moved_to
 
             # Verify cookie from last join
-            query_string = request.COOKIES.get("bbb_join")
-            checksum = _checksum_regex.match(query_string).group(1)
-            query_string = _checksum_regex.sub("", query_string)
-            if hashlib.sha1(("rejoin" + query_string + Loadbalancer.secret).encode('utf-8')).hexdigest() != checksum:
-                return respond(False, "checksumError", "You did not pass the checksum security check")
-
-            # TODO
-            return respond(True, "notImplemented", query_string)
+            parameters = json.loads(request.COOKIES.get("bbb_join"))
+            if validate_checksum(parameters, Loadbalancer.secret, salt="rejoin", use_time_component=False):
+                return respond(True, "notImplemented", data=parameters)
+            else:
+                return XmlResponse(respond(False, "checksumError", "You did not pass the checksum security check"))
