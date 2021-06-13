@@ -3,17 +3,20 @@ The core logic of the loadbalancer
 """
 import random
 
-from django.conf import settings
 from django.db.models import QuerySet, Sum, Q
 
 from api.bbb_api import send_api_request, build_api_url
+from common_files.config import LoadBalancerConfig
 from common_files.models import BBBServer, Meeting
+
+
+config = LoadBalancerConfig.from_json("../config.json")
 
 
 class Loadbalancer:
     """Object imitating a BBBServer to create api urls"""
-    api_url = f"https://{settings.config.hostname}/bigbluebutton/api/"
-    secret = settings.config.secret
+    api_url = f"https://{config.hostname}/bigbluebutton/api/"
+    secret = config.secret
 
 
 def get_next_server(queryset: QuerySet = None) -> BBBServer:
