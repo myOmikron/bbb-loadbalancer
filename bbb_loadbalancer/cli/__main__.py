@@ -15,7 +15,7 @@ from .set_state import set_state
 
 config = LoadBalancerConfig.from_json("../config.json")
 parser = argparse.ArgumentParser(description="Cli for bbb-loadbalancer")
-subparsers = parser.add_subparsers(title="commands", dest="command")
+subparsers = parser.add_subparsers(title="commands", dest="command", required=True)
 
 
 add = subparsers.add_parser("add", description="Add a server")
