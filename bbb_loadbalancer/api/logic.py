@@ -62,7 +62,7 @@ def create_meeting(server: BBBServer, meeting_id: str, parameters: dict = None) 
             internal_id="**TEMP**",
             server=server,
             load=parameters["load"] if "load" in parameters else 1,
-            create_query=parameters,
+            create_query=dict(parameters),
         )
     else:
         meeting = Meeting.running.get(meeting_id=meeting_id)
