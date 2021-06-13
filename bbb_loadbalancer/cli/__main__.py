@@ -15,7 +15,7 @@ from .set_state import set_state
 
 config = LoadBalancerConfig.from_json("../config.json")
 parser = argparse.ArgumentParser(description="Cli for bbb-loadbalancer")
-subparsers = parser.add_subparsers(title="commands", dest="command", required=True)
+subparsers = parser.add_subparsers(title="commands", dest="command")
 
 
 add = subparsers.add_parser("add", description="Add a server")
@@ -149,6 +149,10 @@ def handle_enable():
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    if args.command is None:
+        parser.print_help()
+        parser.exit(0)
+
     try:
         globals()["handle_" + args.command]()
     except KeyboardInterrupt:
