@@ -12,7 +12,7 @@ from django.views import View
 from jxmlease import XMLDictNode
 from rc_protocol import get_checksum
 
-from api.bbb_api import send_api_request
+from api.bbb_api import send_api_request, build_api_url
 from api.response import XmlResponse, EarlyResponse, RawXMLString, respond
 from bbb_loadbalancer import settings
 from common_files.models import Meeting, BBBServer
@@ -169,7 +169,7 @@ class Join(_GetView):
 
     def process(self, parameters: dict):
         meeting = self.get_meeting(parameters)
-        redirect = meeting.server.build_api_url("join", parameters)
+        redirect = build_api_url(meeting.server, "join", parameters)
         logger.info(f"-> {redirect}")
         return HttpResponseRedirect(redirect)
 
