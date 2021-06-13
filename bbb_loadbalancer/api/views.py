@@ -375,6 +375,8 @@ class Move(_GetView):
         new_meeting, response = create_meeting(server, meeting.meeting_id, meeting.create_query)
         if response["returncode"] == "SUCCESS":
             logger.info(f"SUCCESS: moved from {meeting.server} to {new_meeting.server}")
+            meeting.moved_to = new_meeting
+            meeting.save()
 
         return respond(data=response)
 

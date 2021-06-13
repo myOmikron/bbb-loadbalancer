@@ -24,8 +24,10 @@ def set_state(server: BBBServer, state: str):
 
             # Reopen the meeting on a new server
             new_server = get_next_server()
-            _, response = create_meeting(new_server, meeting.meeting_id, meeting.create_query)
+            new_meeting, response = create_meeting(new_server, meeting.meeting_id, meeting.create_query)
             if response["returncode"] == "SUCCESS":
                 print(f"Reopened '{meeting.meeting_id}' on #{new_server.server_id}", file=sys.stdout)
+                meeting.moved_to = new_meeting
+                meeting.save()
             else:
                 print(f"Couldn't reopen '{meeting.meeting_id}': {response['message']}", file=sys.stderr)
