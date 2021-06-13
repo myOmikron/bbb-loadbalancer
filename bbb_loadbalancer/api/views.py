@@ -4,16 +4,16 @@ import random
 import re
 import os.path
 from collections import defaultdict
-from functools import wraps
-from xml.sax.xmlreader import AttributesImpl
 
 import httpx
 from django.db.models import Sum, Q
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponseRedirect
 from django.views import View
-from jxmlease import emit_xml, XMLDictNode, XMLCDATANode
+from jxmlease import XMLDictNode
 from rc_protocol import get_checksum
 
+from api.bbb_api import send_api_request
+from api.response import XmlResponse, EarlyResponse, RawXMLString, respond
 from bbb_loadbalancer import settings
 from common_files.models import Meeting, BBBServer
 
@@ -23,38 +23,7 @@ _checksum_algos = [
     lambda string: hashlib.sha256(string.encode("utf-8")).hexdigest(),
 ]
 
-logger = logging.getLogger(__name__)
-
-
-class RawXMLString(XMLCDATANode):
-    """
-    Small hack to wrap xml string with jxmlease without parsing it first
-    """
-
-    def _emit_handler(self, content_handler, depth, pretty, newl, indent):
-        if pretty:
-            content_handler.ignorableWhitespace(depth * indent)
-        content_handler.startElement(self.tag, AttributesImpl(self.xml_attrs))
-        content = self.get_cdata()
-        content_handler._finish_pending_start_element()               # Copied and modified from XMLGenerator.characters
-        if not isinstance(content, str):                              #
-            content_handler = str(content, content_handler._encoding) #
-        content_handler._write(content)                               #
-        content_handler.endElement(self.tag)
-        if pretty and depth > 0:
-            content_handler.ignorableWhitespace(newl)
-
-
-@wraps(HttpResponse)
-def XmlResponse(data, *args, **kwargs):
-    return HttpResponse(emit_xml(data), *args, content_type="text/xml", **kwargs)
-
-
-class EarlyResponse(RuntimeError):
-
-    def __init__(self, response: dict):
-        super().__init__()
-        self.response = response
+logger = logging.getLogger("api")
 
 
 class _GetView(View):
@@ -72,7 +41,7 @@ class _GetView(View):
                 break
         # No checksum matched
         else:
-            return XmlResponse(self.respond(False, "checksumError", "You did not pass the checksum security check"))
+            return XmlResponse(respond(False, "checksumError", "You did not pass the checksum security check"))
 
         # Get parameters as simple dict without checksum
         parameters = dict((key, request.GET.get(key)) for key in request.GET if key != "checksum")
@@ -86,52 +55,13 @@ class _GetView(View):
             response = early_response.response
         except BaseException:
             logger.exception("FAILED due to exception:")
-            response = self.respond(False, "internalError", "An internal server error occurred.")
+            response = respond(False, "internalError", "An internal server error occurred.")
 
         # Wrap response with XmlResponse if necessary
         if isinstance(response, dict):
             return XmlResponse(response)
         else:
             return response
-
-    @staticmethod
-    def respond(success: bool = True,
-                message_key: str = None,
-                message: str = None,
-                data: dict = None) -> dict:
-        """
-        Create a response dict
-
-        :param success: whether the call was successful (when False, message_key and message are required)
-        :type success: bool
-        :param message_key: a camelcase word to describe what happened (required if success is False)
-        :type message_key: str
-        :param message: a short description of what happened (required if success is False)
-        :type message: str
-        :param data: a dictionary containing any endpoint specific response data
-        :type data: dict
-        :return: response dictionary
-        :rtype: dict
-        """
-        response = {}
-
-        if success:
-            response["returncode"] = "SUCCESS"
-        else:
-            response["returncode"] = "FAILED"
-            assert message_key is not None and message is not None, \
-                "Arguments 'message' and 'message_key' are required when 'success' is False"
-            logger.info(f"FAILED: {message_key} | {message}")
-
-        if message:
-            response["message"] = message
-        if message_key:
-            response["messageKey"] = message_key
-
-        if data:
-            response.update(data)
-
-        return {"response": response}
 
     def get_meeting_id(self, parameters: dict) -> str:
         """
@@ -145,7 +75,7 @@ class _GetView(View):
         if "meetingID" in parameters:
             return parameters["meetingID"]
         else:
-            raise EarlyResponse(self.respond(
+            raise EarlyResponse(respond(
                 False, "missingParamMeetingID",
                 "You must specify a meeting ID for the meeting."
             ))
@@ -163,7 +93,7 @@ class _GetView(View):
         try:
             return Meeting.running.get(meeting_id=meeting_id)
         except Meeting.DoesNotExist:
-            raise EarlyResponse(self.respond(
+            raise EarlyResponse(respond(
                 False, "notFound",
                 "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
             )) from None
@@ -176,7 +106,7 @@ class DefaultView(_GetView):
 
     def get(self, request: HttpRequest, *args, **kwargs):
         logger.info(f"GET {request.path}")
-        return XmlResponse(self.respond(False, "unsupportedRequest", "This request is not supported."))
+        return XmlResponse(respond(False, "unsupportedRequest", "This request is not supported."))
 
 
 # --------------------------- #
@@ -222,7 +152,7 @@ class Create(_GetView):
         server = self.get_next_server()
 
         # Create meeting
-        response = server.send_api_request("create", parameters)
+        response = send_api_request(server, "create", parameters)
         if response["returncode"] == "SUCCESS" and not Meeting.running.filter(meeting_id=meeting_id).exists():
             Meeting.objects.create(
                 meeting_id=response["meetingID"],
@@ -232,7 +162,7 @@ class Create(_GetView):
                 create_query=parameters,
             )
             logger.info(f"SUCCESS: created on {server}")
-        return self.respond(data=response)
+        return respond(data=response)
 
 
 class Join(_GetView):
@@ -250,9 +180,9 @@ class IsMeetingRunning(_GetView):
         meeting_id = self.get_meeting_id(parameters)
 
         if Meeting.running.filter(meeting_id=meeting_id).exists():
-            return self.respond(data={"running": "true"})
+            return respond(data={"running": "true"})
         else:
-            return self.respond(data={"running": "false"})
+            return respond(data={"running": "false"})
 
 
 class End(_GetView):
@@ -260,19 +190,19 @@ class End(_GetView):
     def process(self, parameters: dict):
         meeting = self.get_meeting(parameters)
 
-        response = meeting.server.send_api_request("end", parameters)
+        response = send_api_request(meeting.server, "end", parameters)
         if response["returncode"] == "SUCCESS":
             meeting.ended = True
             meeting.save()
 
-        return self.respond(data=response)
+        return respond(data=response)
 
 
 class GetMeetingInfo(_GetView):
 
     def process(self, parameters: dict):
         meeting = self.get_meeting(parameters)
-        response = meeting.server.send_api_request("getMeetingInfo", parameters)
+        response = send_api_request(meeting.server, "getMeetingInfo", parameters)
         return XmlResponse({"response": response})
 
 
@@ -286,7 +216,7 @@ class GetMeetings(_GetView):
         :param server: server to get meetings from
         :return: list of meetings (meetings are dicts)
         """
-        response = server.send_api_request("getMeetings")
+        response = send_api_request(server, "getMeetings")
 
         if "messageKey" in response and response["messageKey"] == "noMeetings":
             return []  # No meetings
@@ -304,12 +234,12 @@ class GetMeetings(_GetView):
             meetings += self.from_server(server)
 
         if len(meetings) == 0:
-            return self.respond(
+            return respond(
                 True, "noMeetings",
                 "no meetings were found on this server"
             )
         else:
-            return self.respond(True, data={"meetings": {"meeting": meetings}})
+            return respond(True, data={"meetings": {"meeting": meetings}})
 
 
 class GetRecordings(_GetView):
@@ -333,12 +263,12 @@ class GetRecordings(_GetView):
 
         # Wrap player's response
         if not response:
-            return self.respond(
+            return respond(
                 True, "noRecordings", "There are no recordings for the meeting(s).",
                 data={"recordings": {}}
             )
         else:
-            return self.respond(
+            return respond(
                 True,
                 data={"recordings": RawXMLString(response)}
             )
@@ -361,7 +291,7 @@ class PublishRecordings(_GetView):
         responses = []
         for server, meetings in meetings_per_server.items():
             responses.append(
-                server.send_api_request("publishRecordings", {
+                send_api_request(server, "publishRecordings", {
                     "recordID": ",".join(meetings),
                     "publish": parameters["publish"]
                 })
@@ -372,11 +302,11 @@ class PublishRecordings(_GetView):
             if response["returncode"] == "SUCCESS":
                 break
         else:
-            return self.respond(
+            return respond(
                    False, "notFound",
                    "We could not find recordings"
                )
-        return self.respond(True, data={"published": parameters["publish"]})
+        return respond(True, data={"published": parameters["publish"]})
 
 
 class DeleteRecordings(_GetView):
@@ -391,9 +321,9 @@ class DeleteRecordings(_GetView):
 
         response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"}).json()
         if response["success"]:
-            return self.respond(True)
+            return respond(True)
         else:
-            return self.respond(False, "emptyList", response["message"])
+            return respond(False, "emptyList", response["message"])
 
 
 class UpdateRecordings(_GetView):
@@ -416,7 +346,7 @@ class UpdateRecordings(_GetView):
         responses = []
         for server, meetings in meetings_per_server.items():
             responses.append(
-                server.send_api_request("updateRecordings", {
+                send_api_request(server, "updateRecordings", {
                     "recordID": ",".join(meetings),
                     **meta_parameters,
                 })
@@ -427,11 +357,11 @@ class UpdateRecordings(_GetView):
             if response["returncode"] == "SUCCESS":
                 break
         else:
-            return self.respond(
+            return respond(
                 False, "notFound",
                 "We could not find recordings"
             )
-        return self.respond(True, data={"updated": "true"})
+        return respond(True, data={"updated": "true"})
 
 
 class GetDefaultConfigXML(_GetView):
@@ -462,7 +392,7 @@ class Move(_GetView):
         try:
             meeting = Meeting.running.get(meeting_id=meeting_id)
         except Meeting.DoesNotExist:
-            return self.respond(
+            return respond(
                 False, "notFound",
                 "We could not find a meeting with that meeting ID - perhaps the meeting is not yet running?"
             )
@@ -471,7 +401,7 @@ class Move(_GetView):
             try:
                 server = BBBServer.objects.get(server_id=parameters["serverID"])
             except BBBServer.DoesNotExist:
-                return self.respond(
+                return respond(
                     False, "notFound",
                     "We don't have a server with that server ID"
                 )
@@ -479,20 +409,20 @@ class Move(_GetView):
             server = Create.get_next_server(BBBServer.objects.exclude(id=meeting.server.id))
 
         if server == meeting.server:
-            return self.respond(False, "sameServer", "Origin and destination server are the same.")
+            return respond(False, "sameServer", "Origin and destination server are the same.")
 
         # End meeting
-        response = meeting.server.send_api_request(
+        response = send_api_request(meeting.server,
             "end", {"meetingID": meeting_id, "password": meeting.create_query["moderatorPW"]}
         )
         if response["returncode"] == "SUCCESS":
             meeting.ended = True
             meeting.save()
         else:
-            return self.respond(data=response)
+            return respond(data=response)
 
         # Create meeting
-        response = server.send_api_request(
+        response = send_api_request(server,
             "create", meeting.create_query
         )
         if response["returncode"] == "SUCCESS" and not Meeting.running.filter(meeting_id=meeting_id).exists():
@@ -503,7 +433,7 @@ class Move(_GetView):
                 load=meeting.load,
                 create_query=meeting.create_query,
             )
-        return self.respond(data=response)
+        return respond(data=response)
 
 
 class GetStatistics(_GetView):
@@ -520,4 +450,4 @@ class GetStatistics(_GetView):
                 ))
             servers.append({"serverID": server.server_id, "meetings": {"meeting": meetings}})
 
-        return self.respond(True, data={"servers": {"server": servers}})
+        return respond(True, data={"servers": {"server": servers}})
