@@ -241,7 +241,7 @@ class GetRecordings(_GetView):
         params = {
             "recordings": recordings
         }
-        params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, "getRecordings")
+        params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, salt="getRecordings")
         response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"}).text
 
         # Wrap player's response
@@ -300,7 +300,7 @@ class DeleteRecordings(_GetView):
         params = {
             "recordings": [record_id.strip() for record_id in parameters["recordID"].split(",")]
         }
-        params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, "deleteRecordings")
+        params["checksum"] = get_checksum(params, settings.config.player.rcp_secret, salt="deleteRecordings")
 
         response = httpx.post(url, json=params, headers={"user-agent": "bbb-loadbalancer"}).json()
         if response["success"]:
