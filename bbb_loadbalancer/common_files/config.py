@@ -15,7 +15,8 @@ class LoadBalancerConfig(staticconfig.Config):
 
         self.django = staticconfig.Namespace()
         self.django.allowed_hosts = [
-            "127.0.0.1"
+            "127.0.0.1",
+            "localhost",
         ]
         self.secret = "change_me"
 
