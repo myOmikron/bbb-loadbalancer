@@ -444,8 +444,14 @@ class Rejoin(_GetView):
                 new_meeting = new_meeting.moved_to
 
             # Get parameters from last join
-            parameters = json.loads(request.COOKIES.get("bbb_join"))
+            cookie = request.COOKIES.get("bbb_join")
+            if cookie is None:
+                return respond(
+                    False, "noJoinCookie",
+                    "Your meeting was moved, but we couldn't find your join cookie. Please join again."
+                )
+            parameters = json.loads(cookie)
             if validate_checksum(parameters, Loadbalancer.secret, salt="rejoin", use_time_component=False):
                 return HttpResponseRedirect(build_api_url(new_meeting.server, "join", parameters))
             else:
-                return XmlResponse(respond(False, "checksumError", "You did not pass the checksum security check"))
+                return respond(False, "checksumError", "You did not pass the checksum security check")
