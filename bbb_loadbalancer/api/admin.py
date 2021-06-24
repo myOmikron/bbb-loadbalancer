@@ -1,7 +1,21 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from common_files.config import LoadBalancerConfig
 from common_files.models import *
+
+
+config = LoadBalancerConfig.from_json("../config.json")
+
+
+class CommonAdmin(admin.ModelAdmin):
+
+    def changelist_view(self, request, extra_context=None):
+        if extra_context is None:
+            extra_context = {}
+        extra_context["api_mate"] = \
+            f"https://mconf.github.io/api-mate/#server=https://{config.hostname}/bigbluebutton/&sharedSecret={config.secret}"
+        return super().changelist_view(request, extra_context)
 
 
 # ------ #
@@ -19,7 +33,7 @@ def disable_server(modeladmin, request, queryset):
 
 
 @admin.register(BBBServer)
-class BBBServerAdmin(admin.ModelAdmin):
+class BBBServerAdmin(CommonAdmin):
     list_display = ("bbb_server", "reachable", "enabled", "api_mate")
     list_filter = ("state", "reachable")
     ordering = ("server_id", )
@@ -56,7 +70,7 @@ def mark_ended(modeladmin, request, queryset):
 
 
 @admin.register(Meeting)
-class MeetingAdmin(admin.ModelAdmin):
+class MeetingAdmin(CommonAdmin):
     list_display = ("__str__", "server", "ended")
     ordering = ("ended", )
     actions = (mark_ended,)
