@@ -1,3 +1,4 @@
+import datetime
 import re
 
 from django.db import models
@@ -57,6 +58,7 @@ class Meeting(models.Model):
     ended = models.BooleanField(default=False)
     load = models.IntegerField()
     create_query = models.JSONField(default=dict)
+    created = models.DateTimeField(blank=True, default=datetime.datetime.now)
     moved_to = models.ForeignKey("Meeting", on_delete=models.CASCADE, null=True, blank=True, default=None)
 
     def __str__(self):
