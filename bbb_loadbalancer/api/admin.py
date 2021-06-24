@@ -24,6 +24,8 @@ class BBBServerAdmin(admin.ModelAdmin):
     list_filter = ("state", "reachable")
     ordering = ("server_id", )
     actions = (enable_server, disable_server)
+    fields = ("server_id", "secret", "state")
+    readonly_fields = ("state", )
 
     def enabled(self, obj: BBBServer) -> bool:
         return obj.state == BBBServer.ENABLED
@@ -34,6 +36,14 @@ class BBBServerAdmin(admin.ModelAdmin):
 
     def bbb_server(self, obj: BBBServer) -> str:
         return f"#{obj.server_id} {obj}"
+
+    # You can't add servers using the admin interface, please use the cli
+    def has_add_permission(self, request):
+        return False
+
+    # You can't delete servers using the admin interface, please use the cli
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 # ------- #
