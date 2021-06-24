@@ -72,5 +72,5 @@ def mark_ended(modeladmin, request, queryset):
 @admin.register(Meeting)
 class MeetingAdmin(CommonAdmin):
     list_display = ("__str__", "created", "server", "ended")
-    ordering = ("ended", "created")
+    ordering = ("ended", "-created")
     actions = (mark_ended,)
