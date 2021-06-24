@@ -12,6 +12,16 @@ We tried to emulate a bigbluebutton server's api as close as possible.
 
 For a full documentation please use [bigbluebutton's offical docs](https://docs.bigbluebutton.org/dev/api.html).
 
+## Tweaked Endpoints
+
+### create
+
+The **create** endpoint accepts a new optional parameter:
+
+Param Name | Required / Optional | Type   | Description
+-----------|---------------------|--------|----------------
+load       | Optional            | Number | An abstract measure of how expensive the meeting is expected to get. <br> When determining on which server to create a new meeting the loadbalancer sums the load values of all running meetings for each server and chooses the one with the lowest total load. <br> Should be positive and defaults to 1 when not specified.
+
 ## Custom Endpoints
 
 ### move
