@@ -59,7 +59,7 @@ def create_meeting(server: BBBServer, meeting_id: str, parameters: dict = None) 
         # Register the meeting to get an id and delete it if the bbb api call fails
         meeting = Meeting.objects.create(
             meeting_id=meeting_id,
-            internal_id="**TEMP**",
+            internal_id=Meeting.TEMP_INTERNAL_ID,
             server=server,
             load=parameters["load"] if "load" in parameters else 1,
             create_query=dict(parameters),
@@ -74,7 +74,7 @@ def create_meeting(server: BBBServer, meeting_id: str, parameters: dict = None) 
     response = send_api_request(server, "create", parameters)
 
     # Update new meeting
-    if meeting.internal_id == "**TEMP**":
+    if meeting.internal_id == Meeting.TEMP_INTERNAL_ID:
         if response["returncode"] == "SUCCESS":
             meeting.internal_id = response["internalMeetingID"]
             meeting.save()

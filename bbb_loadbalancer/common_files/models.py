@@ -46,6 +46,8 @@ class RunningMeetingsManager(Manager):
 
 
 class Meeting(models.Model):
+    TEMP_INTERNAL_ID = "**TEMP**"
+
     objects = Manager()
     running = RunningMeetingsManager()
 

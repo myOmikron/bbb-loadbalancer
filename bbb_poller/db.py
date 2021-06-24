@@ -14,7 +14,7 @@ def get_server():
 
 
 def get_meetings():
-    return [x for x in Meeting.objects.filter(ended=False)]
+    return [x for x in Meeting.objects.filter(ended=False).exclude(internal_id=Meeting.TEMP_INTERNAL_ID)]
 
 
 def get_server_for_meeting(meeting_id):
