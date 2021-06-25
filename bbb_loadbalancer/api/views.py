@@ -103,7 +103,7 @@ class _GetView(View):
         raise NotImplementedError
 
 
-class DefaultView(_GetView):
+class DefaultView(View):
 
     def get(self, request: HttpRequest, *args, **kwargs):
         logger.info(f"GET {request.path}")
@@ -114,10 +114,10 @@ class DefaultView(_GetView):
 # Bigbluebutton API endpoints #
 # --------------------------- #
 
-class Index(_GetView):
+class Index(View):
 
-    def process(self, parameters: dict, request: HttpRequest):
-        return respond(True, data={"version": "2.0"})
+    def get(self, request: HttpRequest, *args, **kwargs):
+        return XmlResponse(respond(True, data={"version": "2.0"}))
 
 
 class Create(_GetView):

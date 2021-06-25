@@ -21,5 +21,6 @@ urlpatterns = [
     path("move", Move.as_view()),
     path("getStatistics", GetStatistics.as_view()),
     path("rejoin", Rejoin.as_view()),
+    path("<str:anything>", DefaultView.as_view()),
 ]
 

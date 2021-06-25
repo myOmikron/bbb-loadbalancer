@@ -17,10 +17,8 @@ from django.contrib import admin
 from django.urls import path, include
 
 import api.urls
-from api.views import DefaultView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('bigbluebutton/api/', include(api.urls)),
-    path('', DefaultView.as_view()),
 ]
