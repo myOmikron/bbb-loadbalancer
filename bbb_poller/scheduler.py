@@ -105,7 +105,7 @@ class Scheduler:
                 self.schedule_tasks(server, client)
 
             meeting_list = db.execute_task(db.get_meetings)
-            logger.debug(f"Running meeting to check: {server_list}")
+            logger.debug(f"Running meeting to check: {meeting_list}")
             for meeting in meeting_list:
                 self.meetings.append(meeting)
 
