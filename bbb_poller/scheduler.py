@@ -99,11 +99,13 @@ class Scheduler:
             self.meetings = []
             logger.info("Reloading server")
             server_list = db.execute_task(db.get_server)
+            logger.debug(f"Loaded servers: {server_list}")
             for server in server_list:
                 self.checks[server.server_id] = []
                 self.schedule_tasks(server, client)
 
             meeting_list = db.execute_task(db.get_meetings)
+            logger.debug(f"Running meeting to check: {server_list}")
             for meeting in meeting_list:
                 self.meetings.append(meeting)
 
