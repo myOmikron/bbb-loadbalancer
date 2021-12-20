@@ -1,7 +1,8 @@
 import asyncio
 import logging
+import logging.handlers
 import os
-import time
+import zlib
 
 import django
 
@@ -10,14 +11,37 @@ import settings
 logger = logging.getLogger(__name__)
 
 
+def namer(name):
+    return name + ".gz"
+
+
+def rotator(source, dest):
+    with open(source, "rb") as sf:
+        data = sf.read()
+        compressed = zlib.compress(data, 9)
+        with open(dest, "wb") as df:
+            df.write(compressed)
+    os.remove(source)
+
+
 async def main():
-    logging.basicConfig(
+    rotating_handler = logging.handlers.TimedRotatingFileHandler(
         filename=os.path.join(settings.config.log_dir, "poller.log"),
+        # sunday
+        when="W6",
+        backupCount=15,
+        utc=True,
+        encoding="utf-8"
+    )
+    rotating_handler.rotator = rotator
+    rotating_handler.namer = namer
+
+    logging.basicConfig(
         format='%(asctime)s :: %(levelname)s: %(message)s',
         datefmt='%d-%m-%Y %H:%M:%S',
-        level=logging.INFO
+        level=logging.INFO,
+        handlers=[rotating_handler]
     )
-    logging.Formatter.converter = time.gmtime
 
     from scheduler import Scheduler
 

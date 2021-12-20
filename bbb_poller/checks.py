@@ -3,6 +3,7 @@ import logging
 import os
 
 from bigbluebutton_api_python import BigBlueButton
+from bigbluebutton_api_python.exception import BBBException
 
 logger = logging.getLogger("poller")
 
@@ -65,7 +66,11 @@ def process_check(file, cmd, server_id, server_url, server_secret, reachable):
 def get_running_meetings(meeting_id, server):
     async def execute_request():
         b = BigBlueButton(server.url, server.secret)
-        ret = b.is_meeting_running(meeting_id).is_meeting_running()
+        try:
+            b.get_meeting_info(meeting_id)
+        except BBBException:
+            await asyncio.sleep(0.01)
+            return False
         await asyncio.sleep(0.01)
-        return ret
+        return True
     return execute_request
