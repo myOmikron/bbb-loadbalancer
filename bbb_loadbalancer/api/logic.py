@@ -33,7 +33,7 @@ def get_next_server(queryset: QuerySet = None) -> BBBServer:
 
     # Get all servers with a calculated load attribute
     servers = list(queryset
-                   .filter(state=BBBServer.ENABLED)
+                   .filter(state=BBBServer.ENABLED, reachable=True)
                    .annotate(load=Sum("meeting__load", filter=Q(meeting__ended=False)))
                    .order_by("load"))
 
