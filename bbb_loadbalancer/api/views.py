@@ -199,6 +199,9 @@ class GetMeetings(_GetView):
         :param server: server to get meetings from
         :return: list of meetings (meetings are dicts)
         """
+        if server.unreachable:
+            return []
+
         response = send_api_request(server, "getMeetings")
 
         if "messageKey" in response and response["messageKey"] == "noMeetings":
@@ -274,6 +277,7 @@ class PublishRecordings(_GetView):
         responses = []
         for server, meetings in meetings_per_server.items():
             responses.append(
+                # TODO
                 send_api_request(server, "publishRecordings", {
                     "recordID": ",".join(meetings),
                     "publish": parameters["publish"]
@@ -329,6 +333,7 @@ class UpdateRecordings(_GetView):
         responses = []
         for server, meetings in meetings_per_server.items():
             responses.append(
+                # TODO
                 send_api_request(server, "updateRecordings", {
                     "recordID": ",".join(meetings),
                     **meta_parameters,
@@ -383,6 +388,7 @@ class Move(_GetView):
             return respond(False, "sameServer", "Origin and destination server are the same.")
 
         # End meeting
+        # TODO
         response = send_api_request(meeting.server,
             "end", {"meetingID": meeting.meeting_id, "password": meeting.create_query["moderatorPW"]}
         )

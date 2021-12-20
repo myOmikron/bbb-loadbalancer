@@ -34,8 +34,8 @@ def disable_server(modeladmin, request, queryset):
 
 @admin.register(BBBServer)
 class BBBServerAdmin(CommonAdmin):
-    list_display = ("bbb_server", "reachable", "enabled", "api_mate")
-    list_filter = ("state", "reachable")
+    list_display = ("bbb_server", "unreachable", "enabled", "api_mate")
+    list_filter = ("state", "unreachable")
     ordering = ("server_id", )
     actions = (enable_server, disable_server)
     fields = ("server_id", "secret", "state")

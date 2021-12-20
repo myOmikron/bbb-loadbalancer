@@ -106,7 +106,7 @@ def handle_list():
         print(f"#{server.server_id}: {server.url}")
         print(f"\tsecret: {server.secret}")
         print(f"\tstate: {server.state}")
-        print("\t" + "REACHABLE" if server.reachable else "NOT REACHABLE")
+        print("\t" + "NOT REACHABLE" if server.unreachable else "REACHABLE")
 
 
 panic = subparsers.add_parser("panic", description="Set a server to panic. "

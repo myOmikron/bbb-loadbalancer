@@ -14,7 +14,7 @@ class BBBServer(models.Model):
     secret = models.CharField(max_length=255, default="")
     state = models.CharField(max_length=255, default=ENABLED,
                              choices=((ENABLED, "enabled"), (DISABLED, "disabled"), (PANIC, "panic")))
-    reachable = models.BooleanField(default=True)
+    unreachable = models.IntegerField(default=0)
 
     @property
     def api_url(self):
