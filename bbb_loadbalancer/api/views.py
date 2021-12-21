@@ -276,8 +276,10 @@ class PublishRecordings(_GetView):
         # Call publish on every server once with all its meetings
         responses = []
         for server, meetings in meetings_per_server.items():
+            if server.unreachable:
+                continue
+
             responses.append(
-                # TODO
                 send_api_request(server, "publishRecordings", {
                     "recordID": ",".join(meetings),
                     "publish": parameters["publish"]
@@ -332,8 +334,10 @@ class UpdateRecordings(_GetView):
         # Call update on every server once with all its meetings
         responses = []
         for server, meetings in meetings_per_server.items():
+            if server.unreachable:
+                continue
+
             responses.append(
-                # TODO
                 send_api_request(server, "updateRecordings", {
                     "recordID": ",".join(meetings),
                     **meta_parameters,
@@ -388,7 +392,6 @@ class Move(_GetView):
             return respond(False, "sameServer", "Origin and destination server are the same.")
 
         # End meeting
-        # TODO
         response = send_api_request(meeting.server,
             "end", {"meetingID": meeting.meeting_id, "password": meeting.create_query["moderatorPW"]}
         )
