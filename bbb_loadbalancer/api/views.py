@@ -199,7 +199,7 @@ class GetMeetings(_GetView):
         :param server: server to get meetings from
         :return: list of meetings (meetings are dicts)
         """
-        if server.unreachable:
+        if not server.enabled:
             return []
 
         response = send_api_request(server, "getMeetings")
@@ -276,7 +276,7 @@ class PublishRecordings(_GetView):
         # Call publish on every server once with all its meetings
         responses = []
         for server, meetings in meetings_per_server.items():
-            if server.unreachable:
+            if not server.enabled:
                 continue
 
             responses.append(
@@ -334,7 +334,7 @@ class UpdateRecordings(_GetView):
         # Call update on every server once with all its meetings
         responses = []
         for server, meetings in meetings_per_server.items():
-            if server.unreachable:
+            if not server.enabled:
                 continue
 
             responses.append(

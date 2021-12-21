@@ -17,6 +17,10 @@ class BBBServer(models.Model):
     unreachable = models.IntegerField(default=0)
 
     @property
+    def enabled(self):
+        return self.state == self.ENABLED
+
+    @property
     def api_url(self):
         """
         Ensure the url used for api calls looks correct.
