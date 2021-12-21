@@ -32,9 +32,9 @@ def get_server_for_meeting(meeting_id):
     return get_from_db
 
 
-def set_server_reachability(unreachability: int, bbb_server_id):
+def set_server_reachability(unreachability: int, server_id):
     def write_to_db():
-        BBBServer.objects.filter(bbb_server_id=bbb_server_id).update(unreachable=unreachability)
+        BBBServer.objects.filter(server_id=server_id).update(unreachable=unreachability)
     return write_to_db
 
 
