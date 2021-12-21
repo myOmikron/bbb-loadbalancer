@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import multiprocessing
 
 import httpx
 
@@ -9,13 +8,10 @@ import checks
 import db
 import settings
 
-from cli.set_state import set_state
-
-
 logger = logging.getLogger(__name__)
 
 
-async def _execute_checks(server, check_list):
+async def _execute_checks(server_id, check_list):
     server_online = True
     for check in check_list:
         for i in range(1, 4):
@@ -34,14 +30,7 @@ async def _execute_checks(server, check_list):
             break
     if not server_online:
         logger.debug("Writing to db...")
-        if server.unreachable < 2:
-            db.execute_task(db.set_server_reachability(server.unreachable + 1, server))
-        if server.unreachable == 1:
-            s = db.execute_task(db.get_server(server))
-            process = multiprocessing.Process(target=set_state, args=(s, s.PANIC))
-            process.start()
-    else:
-        db.execute_task(db.set_server_reachability(True, server))
+    db.execute_task(db.set_server_reachability(server_online, server_id))
 
 
 async def _execute_meeting(meeting):

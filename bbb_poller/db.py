@@ -1,6 +1,8 @@
 import concurrent.futures
+import multiprocessing
 from datetime import datetime, timedelta
 
+from cli.set_state import set_state
 from common_files.models import *
 
 
@@ -12,12 +14,6 @@ def execute_task(task):
 
 def get_servers():
     return [x for x in BBBServer.objects.all()]
-
-
-def get_server(server):
-    def get_from_db() -> BBBServer:
-        return BBBServer.objects.get(server_id=server.server_id)
-    return get_from_db
 
 
 def get_meetings():
@@ -32,9 +28,21 @@ def get_server_for_meeting(meeting_id):
     return get_from_db
 
 
-def set_server_reachability(unreachability: int, server_id):
+def set_server_reachability(reachability: bool, server_id):
     def write_to_db():
-        BBBServer.objects.filter(server_id=server_id).update(unreachable=unreachability)
+        try:
+            server = BBBServer.objects.get(server_id=server_id)
+            if not reachability:
+                if server.unreachable != 2:
+                    server.unreachable = server.unreachable + 1
+                else:
+                    process = multiprocessing.Process(target=set_state, args=(server, server.PANIC))
+                    process.start()
+            else:
+                server.unreachable = 0
+            server.save(force_update=True)
+        except BBBServer.DoesNotExist:
+            pass
     return write_to_db
 
 
