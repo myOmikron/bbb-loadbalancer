@@ -1,7 +1,7 @@
 import concurrent.futures
 from datetime import datetime, timedelta
 
-from bbb_loadbalancer.common_files.models import *
+from common_files.models import *
 
 
 def execute_task(task):
@@ -10,8 +10,14 @@ def execute_task(task):
         return future.result()
 
 
-def get_server():
+def get_servers():
     return [x for x in BBBServer.objects.all()]
+
+
+def get_server(server):
+    def get_from_db() -> BBBServer:
+        return BBBServer.objects.get(server_id=server.server_id)
+    return get_from_db
 
 
 def get_meetings():
@@ -26,14 +32,9 @@ def get_server_for_meeting(meeting_id):
     return get_from_db
 
 
-def set_server_reachability(reachability: bool, bbb_server_id):
+def set_server_reachability(unreachability: int, bbb_server_id):
     def write_to_db():
-        try:
-            server = BBBServer.objects.get(server_id=bbb_server_id)
-            server.reachable = reachability
-            server.save(force_update=True)
-        except BBBServer.DoesNotExist:
-            pass
+        BBBServer.objects.filter(bbb_server_id=bbb_server_id).update(unreachable=unreachability)
     return write_to_db
 
 

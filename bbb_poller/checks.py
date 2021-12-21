@@ -9,12 +9,12 @@ logger = logging.getLogger("poller")
 
 
 class Check:
-    def __init__(self, *, check_name, server_id, server_url, server_secret, reachable, task):
+    def __init__(self, *, check_name, server_id, server_url, server_secret, unreachable, task):
         self.check_name = check_name
         self.server_id = server_id
         self.server_url = server_url
         self.server_secret = server_secret
-        self.reachable = reachable
+        self.unreachable = unreachable
         self.task = task
 
 
@@ -24,7 +24,7 @@ class CheckResult:
         self.message = message
 
 
-def bbb_api_check(client, server_id, server_url, server_secret, reachable):
+def bbb_api_check(client, server_id, server_url, server_secret, unreachable):
 
     async def check_api_reachability():
         ret = await client.request("GET", os.path.join(server_url, "api"))
@@ -38,12 +38,12 @@ def bbb_api_check(client, server_id, server_url, server_secret, reachable):
         server_id=server_id,
         server_url=server_url,
         server_secret=server_secret,
-        reachable=reachable,
+        unreachable=unreachable,
         task=check_api_reachability
     )
 
 
-def process_check(file, cmd, server_id, server_url, server_secret, reachable):
+def process_check(file, cmd, server_id, server_url, server_secret, unreachable):
 
     async def execute_file_check():
         proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE)
@@ -58,7 +58,7 @@ def process_check(file, cmd, server_id, server_url, server_secret, reachable):
         server_id=server_id,
         server_url=server_url,
         server_secret=server_secret,
-        reachable=reachable,
+        unreachable=unreachable,
         task=execute_file_check
     )
 

@@ -1,12 +1,16 @@
 import asyncio
 import logging
 import os
+import multiprocessing
 
 import httpx
 
 import checks
 import db
 import settings
+
+from cli.set_state import set_state
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +34,12 @@ async def _execute_checks(server, check_list):
             break
     if not server_online:
         logger.debug("Writing to db...")
-        db.execute_task(db.set_server_reachability(False, server))
+        if server.unreachable < 2:
+            db.execute_task(db.set_server_reachability(server.unreachable + 1, server))
+        if server.unreachable == 1:
+            s = db.execute_task(db.get_server(server))
+            process = multiprocessing.Process(target=set_state, args=(s, s.PANIC))
+            process.start()
     else:
         db.execute_task(db.set_server_reachability(True, server))
 
@@ -76,7 +85,7 @@ class Scheduler:
                 server.server_id,
                 server.url,
                 server.secret,
-                server.reachable
+                server.unreachable
             ))
         file = os.path.join(settings.PLUGIN_PATH, "check_systemd.sh")
         for systemd in systemd_list:
@@ -86,9 +95,9 @@ class Scheduler:
                 server.server_id,
                 server.url,
                 server.secret,
-                server.reachable
+                server.unreachable
             ))
-        self.checks[server.server_id].append(checks.bbb_api_check(client, server.server_id, server.url, server.secret, server.reachable))
+        self.checks[server.server_id].append(checks.bbb_api_check(client, server.server_id, server.url, server.secret, server.unreachable))
 
     async def run(self, interval=30):
         client = httpx.AsyncClient()
@@ -98,7 +107,7 @@ class Scheduler:
             self.checks = {}
             self.meetings = []
             logger.info("Reloading server")
-            server_list = db.execute_task(db.get_server)
+            server_list = db.execute_task(db.get_servers)
             logger.debug(f"Loaded servers: {server_list}")
             for server in server_list:
                 self.checks[server.server_id] = []
