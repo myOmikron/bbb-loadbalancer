@@ -70,7 +70,7 @@ def get_running_meetings(meeting_id, server):
         b = BigBlueButton(server.url, server.secret)
         try:
             b.get_meeting_info(meeting_id)
-        except BBBException or socket.timeout or urllib.error.URLError:
+        except Exception:
             await asyncio.sleep(0.01)
             return False
         await asyncio.sleep(0.01)
