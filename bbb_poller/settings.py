@@ -21,7 +21,7 @@ DATABASES = {
 }
 
 INSTALLED_APPS = [
-    "bbb_loadbalancer.common_files.apps.CommonFilesConfigPoller",
+    "common_files.apps.CommonFilesConfig",
 ]
 
 PLUGIN_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
