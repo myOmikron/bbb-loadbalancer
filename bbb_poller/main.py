@@ -3,6 +3,7 @@ import logging
 import logging.handlers
 import os
 import zlib
+import socket
 
 import django
 
@@ -50,6 +51,7 @@ async def main():
 
 
 if __name__ == '__main__':
+    socket.setdefaulttimeout(5)
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
     django.setup()
     asyncio.run(asyncio.get_event_loop().run_until_complete(main()))

@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+import socket
+import urllib.error
 
 from bigbluebutton_api_python import BigBlueButton
 from bigbluebutton_api_python.exception import BBBException
@@ -68,7 +70,7 @@ def get_running_meetings(meeting_id, server):
         b = BigBlueButton(server.url, server.secret)
         try:
             b.get_meeting_info(meeting_id)
-        except BBBException:
+        except Exception:
             await asyncio.sleep(0.01)
             return False
         await asyncio.sleep(0.01)

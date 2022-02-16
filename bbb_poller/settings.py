@@ -20,6 +20,8 @@ DATABASES = {
     }
 }
 
+TIME_ZONE = 'UTC'
+
 INSTALLED_APPS = [
     "common_files.apps.CommonFilesConfig",
 ]
