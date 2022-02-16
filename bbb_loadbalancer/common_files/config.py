@@ -29,3 +29,8 @@ class LoadBalancerConfig(staticconfig.Config):
         self.ssh_user = "root"
         self.hostname = socket.gethostname()
         self.logoutURL = "/"
+
+        self.monitoring = staticconfig.Namespace()
+        self.monitoring.enabled = True
+        self.monitoring.secret = "change_me"
+        self.monitoring.time_delta = 5

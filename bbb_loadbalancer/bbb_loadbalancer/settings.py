@@ -197,3 +197,7 @@ STATIC_ROOT = '/var/www/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SHARED_SECRET = config.secret
+
+MONITORING = config.monitoring.enabled
+MONITORING_SECRET = config.monitoring.secret
+MONITORING_TIME_DELTA = config.monitoring.time_delta
