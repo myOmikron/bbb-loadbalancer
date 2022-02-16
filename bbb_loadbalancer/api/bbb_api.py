@@ -30,16 +30,16 @@ def build_api_url(self, api_call, params=None):
     return self.api_url + api_call + "?" + param_string + "&checksum=" + checksum
 
 
-def send_api_request(self, api_call, params=None, data=None):
+def send_api_request(self, api_call, params=None, data=None, **kwargs):
     url = build_api_url(self, api_call, params)
 
     try:
         # GET request
         if data is None:
-            response = urlopen(url).read()
+            response = urlopen(url, **kwargs).read()
         # POST request
         else:
-            response = urlopen(url, data=urlencode(data).encode()).read()
+            response = urlopen(url, data=urlencode(data).encode(), **kwargs).read()
     except:
         logger.exception(f"Couldn't call a bbb's api: {self}")
         raise EarlyResponse(respond(
@@ -50,4 +50,4 @@ def send_api_request(self, api_call, params=None, data=None):
     try:
         return parse(response)["response"]
     except Exception as e:
-        raise RuntimeError("XMLSyntaxError", e.message)
+        raise RuntimeError("XMLSyntaxError", str(e))
