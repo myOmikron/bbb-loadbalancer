@@ -33,13 +33,19 @@ def set_server_reachability(reachability: bool, server_id):
         try:
             server = BBBServer.objects.get(server_id=server_id)
             if not reachability:
+                server.reachable = 0
                 if 0 <= server.unreachable < 2:
-                    server.unreachable = server.unreachable + 1
+                    server.unreachable += 1
                     if server.unreachable == 2:
+                        # panicking requires its own logic which cli already implements
                         process = multiprocessing.Process(target=set_state, args=(server, server.PANIC))
                         process.start()
             else:
                 server.unreachable = 0
+                if 0 <= server.reachable < 20:
+                    server.reachable += 1
+                    if server.state == server.PANIC and server.reachable == 20:
+                        server.stat = server.ENABLED
             server.save(force_update=True)
         except BBBServer.DoesNotExist:
             pass

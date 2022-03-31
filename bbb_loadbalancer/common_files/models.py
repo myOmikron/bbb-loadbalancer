@@ -14,7 +14,8 @@ class BBBServer(models.Model):
     secret = models.CharField(max_length=255, default="")
     state = models.CharField(max_length=255, default=ENABLED,
                              choices=((ENABLED, "enabled"), (DISABLED, "disabled"), (PANIC, "panic")))
-    unreachable = models.IntegerField(default=0)
+    unreachable = models.PositiveIntegerField(default=0)
+    reachable = models.PositiveIntegerField(default=0)
 
     @property
     def enabled(self):
