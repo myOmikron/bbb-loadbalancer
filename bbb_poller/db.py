@@ -45,7 +45,7 @@ def set_server_reachability(reachability: bool, server_id):
                 if 0 <= server.reachable < 20:
                     server.reachable += 1
                     if server.state == server.PANIC and server.reachable == 20:
-                        server.stat = server.ENABLED
+                        server.state = server.ENABLED
             server.save(force_update=True)
         except BBBServer.DoesNotExist:
             pass
