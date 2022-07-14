@@ -1,8 +1,6 @@
 import asyncio
 import logging
 import os
-import socket
-import urllib.error
 
 from bigbluebutton_api_python import BigBlueButton
 from bigbluebutton_api_python.exception import BBBException
@@ -29,11 +27,14 @@ class CheckResult:
 def bbb_api_check(client, server_id, server_url, server_secret, unreachable):
 
     async def check_api_reachability():
-        ret = await client.request("GET", os.path.join(server_url, "api"))
-        if ret.status_code == 200:
-            return CheckResult(0, "API is reachable")
-        else:
-            return CheckResult(1, f"Status code: {ret.status_code}")
+        try:
+            ret = await client.request("GET", os.path.join(server_url, "api"))
+            if ret.status_code == 200:
+                return CheckResult(0, "API is reachable")
+            else:
+                return CheckResult(1, f"Status code: {ret.status_code}")
+        except Exception as exc:
+            return CheckResult(1, f"Exception during request: {exc.__repr__()}")
 
     return Check(
         check_name="API Reachability",
@@ -69,10 +70,13 @@ def get_running_meetings(meeting_id, server):
     async def execute_request():
         b = BigBlueButton(server.url, server.secret)
         try:
-            b.get_meeting_info(meeting_id)
-        except Exception:
             await asyncio.sleep(0.01)
+            b.get_meeting_info(meeting_id)
+        except BBBException as exc:
+            logger.info(f"BBBException while get meeting info: {exc.__repr__()}")
             return False
-        await asyncio.sleep(0.01)
+        except Exception as exc:
+            logger.error(f"Exception while retrieving running meeting: {exc.__repr__()}")
+            return True
         return True
     return execute_request
