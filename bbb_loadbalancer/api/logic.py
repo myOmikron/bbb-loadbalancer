@@ -71,7 +71,7 @@ def create_meeting(server: BBBServer, meeting_id: str, parameters: dict = None) 
     parameters["logoutURL"] = build_api_url(Loadbalancer, "rejoin", {"meetingID": meeting.id})
 
     # Call bbb's api
-    response = send_api_request(server, "create", parameters)
+    response = send_api_request(meeting.server, "create", parameters)
 
     # Update new meeting
     if meeting.internal_id == Meeting.TEMP_INTERNAL_ID:

@@ -1,9 +1,12 @@
 import concurrent.futures
+import logging
 import multiprocessing
 from datetime import datetime, timedelta
 
 from cli.set_state import set_state
 from common_files.models import *
+
+logger = logging.getLogger(__name__)
 
 
 def execute_task(task):
@@ -40,12 +43,14 @@ def set_server_reachability(reachability: bool, server_id):
                     # panicking requires its own logic which cli already implements
                     process = multiprocessing.Process(target=set_state, args=(server, server.PANIC))
                     process.start()
+                    logger.error(f"Server #{server.server_id} is panicking")
             else:
                 server.unreachable = 0
                 if 0 <= server.reachable < 20:
                     server.reachable += 1
                 if server.state == server.PANIC and server.reachable == 20:
                     server.state = server.ENABLED
+                    logger.info(f"Server #{server.server_id} is enabled again")
             server.save(force_update=True)
         except BBBServer.DoesNotExist:
             pass
