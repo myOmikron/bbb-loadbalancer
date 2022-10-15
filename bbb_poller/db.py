@@ -41,8 +41,14 @@ def set_server_reachability(reachability: bool, server_id):
                     server.unreachable += 1
                 if server.state == server.ENABLED and server.unreachable == 2:
                     # panicking requires its own logic which cli already implements
-                    process = multiprocessing.Process(target=set_state, args=(server, server.PANIC))
-                    process.start()
+
+                    # Disabled temporarily
+                    #
+                    # process = multiprocessing.Process(target=set_state, args=(server, server.PANIC))
+                    # process.start()
+
+                    server.state = server.PANIC
+
                     logger.error(f"Server #{server.server_id} is panicking")
             else:
                 server.unreachable = 0
