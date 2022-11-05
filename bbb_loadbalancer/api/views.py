@@ -18,7 +18,7 @@ from api.response import XmlResponse, EarlyResponse, RawXMLString, respond
 from bbb_loadbalancer import settings
 from common_files.models import Meeting, BBBServer
 
-_checksum_regex = re.compile(r"&?checksum=([^&]+)")
+_checksum_regex = re.compile(r"checksum=([^&]+)&|&?checksum=([^&]+)$")
 _checksum_algos = [
     lambda string: hashlib.sha1(string.encode("utf-8")).hexdigest(),
     lambda string: hashlib.sha256(string.encode("utf-8")).hexdigest(),
